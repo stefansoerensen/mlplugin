@@ -1,0 +1,16 @@
+{
+  "name": "medialine",
+  "owner": {
+    "name": "Medialine AG",
+    "email": "platform@medialine.ag"
+  },
+  "plugins": [
+    {
+      "name": "medialine-platform",
+      "description": "Platform-wide Claude Code conventions for Medialine internal apps — shared rules, skills, agents, hooks, and MCP server registrations. Pinned by every Medialine repo so updates propagate from one place.",
+      "source": "./medialine-platform",
+      "category": "internal-platform",
+      "tags": ["medialine", "platform", "conventions"]
+    }
+  ]
+}

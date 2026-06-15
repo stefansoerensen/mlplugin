@@ -1,0 +1,12 @@
+{
+  "name": "medialine-platform",
+  "description": "Medialine platform conventions: rules, skills, agents, hooks, and MCP server registrations shared across every internal app.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Medialine AG",
+    "email": "platform@medialine.ag"
+  },
+  "homepage": "https://gitea.medialine.com/medialine/claude-plugin-platform",
+  "repository": "https://gitea.medialine.com/medialine/claude-plugin-platform.git",
+  "license": "MIT"
+}

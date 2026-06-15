@@ -1,3 +1,77 @@
 # claude-plugin-platform
 
-Medialine Claude Code plugin marketplace + the medialine-platform plugin (shared rules, skills, agents, hooks, MCP server registrations)
+Medialine's Claude Code plugin marketplace + the `medialine-platform` plugin it publishes. Pinned by every Medialine repo so updates propagate from one place.
+
+## What lives here
+
+```
+.claude-plugin/marketplace.json   ← marketplace catalog (lists medialine-platform)
+medialine-platform/                ← the plugin
+├── .claude-plugin/plugin.json     ← plugin manifest (name, version, author)
+├── skills/                        ← Claude-invokable skills (model-discovered)
+│   ├── auth-integration/SKILL.md
+│   ├── docker-patterns/SKILL.md
+│   ├── object-storage/SKILL.md
+│   ├── port-allocation/SKILL.md
+│   └── vibes-conventions/SKILL.md
+├── rules/                         ← always-loaded conventions (Medialine extension)
+│   ├── branch-workflow.md
+│   ├── conventional-commits.md
+│   ├── docker-first.md
+│   ├── medialine-stack.md
+│   └── security.md
+├── agents/                        ← subagent definitions
+│   ├── backend-developer.md
+│   ├── frontend-developer.md
+│   ├── integrator.md
+│   └── reviewer.md
+└── hooks/hooks.json               ← PreToolUse / PostToolUse handlers
+```
+
+Future additions: `medialine-platform/.mcp.json` (registers the Medialine MCP servers — Track B in the rollout plan).
+
+## Use it from your repo
+
+One-time per developer machine:
+
+```bash
+claude plugin marketplace add https://gitea.medialine.com/medialine/claude-plugin-platform.git
+```
+
+Per repo, add `.claude/plugins.json`:
+
+```json
+{
+  "plugins": [
+    {"name": "medialine-platform", "marketplace": "medialine"}
+  ]
+}
+```
+
+Claude Code resolves on session start; skills/rules/agents/hooks all light up.
+
+To pull a new version: `/plugin marketplace update medialine` then `/plugin update medialine-platform@medialine`.
+
+## Governance
+
+A single `claude-config-dri` in TaskTool (extension of `platform.users.role`) owns this repo. They:
+
+- Approve every PR (default branch is `main`, protected — see [Branch Workflow](./medialine-platform/rules/branch-workflow.md))
+- Bump the plugin's `version` in `medialine-platform/.claude-plugin/plugin.json` on release
+- Run the quarterly convention review per Anthropic's [best-practices guidance](https://claude.com/blog/how-claude-code-works-in-large-codebases-best-practices-and-where-to-start) — retire rules that newer models no longer need, add skills that real session patterns prove worth promoting
+- Triage proposals from the closed feedback loop (see Track D in the rollout plan: Claude proposes plugin updates when it spots reusable patterns; MCP-server telemetry surfaces repeated curl-fallbacks)
+
+## Versioning
+
+This plugin uses semver in `medialine-platform/.claude-plugin/plugin.json`. Repos pin major versions (e.g. `^1.0.0`) and auto-pick up minor/patch bumps. Major bumps require explicit per-repo updates.
+
+When you change the plugin contents:
+- **Patch** (`1.0.x`): typo fix, clarification, no behavior change
+- **Minor** (`1.x.0`): new skill / new rule / new agent / new hook (additive)
+- **Major** (`x.0.0`): removed or renamed convention, hook that may break existing repos
+
+## Related
+
+- The rollout plan: `tasktool/.claude/plans/logical-toasting-dolphin.md`
+- Anthropic plugin docs: <https://code.claude.com/docs/en/plugins>
+- Marketplace docs: <https://code.claude.com/docs/en/plugin-marketplaces>
