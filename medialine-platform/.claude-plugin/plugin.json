@@ -1,12 +1,56 @@
 {
   "name": "medialine-platform",
   "description": "Medialine platform conventions: rules, skills, agents, hooks, and MCP server registrations shared across every internal app.",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "author": {
     "name": "Medialine AG",
     "email": "platform@medialine.ag"
   },
   "homepage": "https://gitea.medialine.com/medialine/claude-plugin-platform",
   "repository": "https://gitea.medialine.com/medialine/claude-plugin-platform.git",
-  "license": "MIT"
+  "license": "MIT",
+  "mcpServers": {
+    "medialine-diag": {
+      "type": "http",
+      "url": "https://tasktool.medialine.com/mcp/diag/mcp",
+      "headers": {
+        "Authorization": "Bearer ${MEDIALINE_MCP_TOKEN}"
+      }
+    },
+    "medialine-gitea": {
+      "type": "http",
+      "url": "https://tasktool.medialine.com/mcp/gitea/mcp",
+      "headers": {
+        "Authorization": "Bearer ${MEDIALINE_MCP_TOKEN}"
+      }
+    },
+    "medialine-jenkins": {
+      "type": "http",
+      "url": "https://tasktool.medialine.com/mcp/jenkins/mcp",
+      "headers": {
+        "Authorization": "Bearer ${MEDIALINE_MCP_TOKEN}"
+      }
+    },
+    "medialine-plugin": {
+      "type": "http",
+      "url": "https://tasktool.medialine.com/mcp/plugin/mcp",
+      "headers": {
+        "Authorization": "Bearer ${MEDIALINE_MCP_TOKEN}"
+      }
+    },
+    "medialine-registry": {
+      "type": "http",
+      "url": "https://tasktool.medialine.com/mcp/registry/mcp",
+      "headers": {
+        "Authorization": "Bearer ${MEDIALINE_MCP_TOKEN}"
+      }
+    },
+    "medialine-ext-api": {
+      "type": "http",
+      "url": "https://tasktool.medialine.com/mcp/ext-api/mcp",
+      "headers": {
+        "Authorization": "Bearer ${MEDIALINE_MCP_TOKEN}"
+      }
+    }
+  }
 }
