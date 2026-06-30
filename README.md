@@ -32,25 +32,38 @@ Future additions: `medialine-platform/.mcp.json` (registers the Medialine MCP se
 
 ## Use it from your repo
 
-One-time per developer machine:
-
-```bash
-claude plugin marketplace add https://gitea.medialine.com/medialine/claude-plugin-platform.git
-```
-
-Per repo, add `.claude/plugins.json`:
+Each repo ships a committed `.claude/settings.json` that both registers the
+marketplace and enables the plugin (Claude Code's native mechanism — there is
+**no** `.claude/plugins.json`; that file is silently ignored):
 
 ```json
 {
-  "plugins": [
-    {"name": "medialine-platform", "marketplace": "medialine"}
-  ]
+  "extraKnownMarketplaces": {
+    "medialine": {
+      "source": {
+        "source": "git",
+        "url": "https://gitea.medialine.com/medialine/claude-plugin-platform.git"
+      },
+      "autoUpdate": true
+    }
+  },
+  "enabledPlugins": {
+    "medialine-platform@medialine": true
+  }
 }
 ```
 
-Claude Code resolves on session start; skills/rules/agents/hooks all light up.
+On a fresh clone, trust the folder; Claude Code prompts to install the
+`medialine` marketplace, then auto-enables the plugin on session start —
+skills/rules/agents/hooks all light up. No manual
+`claude plugin marketplace add` needed.
 
-To pull a new version: `/plugin marketplace update medialine` then `/plugin update medialine-platform@medialine`.
+> Prereq: the gitea CA cert must be trusted in git config (`http.<gitea>.sslcainfo`)
+> so the git marketplace source can fetch — the same cert any gitea clone needs.
+> No `http.sslVerify=false` required.
+
+To pull a new version: `autoUpdate` refreshes the marketplace on startup; or run
+`/plugin marketplace update medialine` then `/plugin update medialine-platform@medialine`.
 
 ## Governance
 
