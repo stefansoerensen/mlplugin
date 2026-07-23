@@ -13,6 +13,7 @@ medialine-platform/                ← the plugin
 │   ├── docker-patterns/SKILL.md
 │   ├── object-storage/SKILL.md
 │   ├── port-allocation/SKILL.md
+│   ├── vector-search/SKILL.md
 │   └── vibes-conventions/SKILL.md
 ├── rules/                         ← always-loaded conventions (Medialine extension)
 │   ├── branch-workflow.md
