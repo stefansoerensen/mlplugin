@@ -31,6 +31,25 @@ edit  ->  commit  ->  push branch (or PR via mcp-gitea)
   `open_pull` + `merge_pull` to avoid manual API calls.
 - Never push to `main` directly -- the global PreToolUse hook blocks it.
 
+### One branch = one PR = one merge
+
+Two failure modes to avoid: commits **stranded** on a branch whose PR already
+merged (they never reach prod), and PRs that merge into the **wrong branch**
+(stacking).
+
+- Cut every new branch from a freshly fetched `main`
+  (`git fetch origin && git switch -c <name> origin/main`). Never start new work
+  on an existing feature branch.
+- Always open PRs with **base = `main`**. Never base a PR on another feature
+  branch -- do not stack PRs.
+- A branch is **frozen once its PR is open**: do not push more commits to it and
+  do not reuse it for new work. Start a new branch from `main` instead.
+- Before pushing to an existing branch, confirm its PR is still **open**
+  (`get_pull` / `list_pulls`). If it is merged or closed, the commit would be
+  stranded -- branch anew from the latest `main`.
+- If new work depends on an unmerged PR, wait for that PR to merge, then branch
+  from the updated `main` -- rather than stacking a second branch on the first.
+
 ## Verify patterns
 
 After deploy, the diag-api skill gives:
