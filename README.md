@@ -9,16 +9,24 @@ Medialine's Claude Code plugin marketplace + the `medialine-platform` plugin it 
 medialine-platform/                ← the plugin
 ├── .claude-plugin/plugin.json     ← plugin manifest (name, version, author)
 ├── skills/                        ← Claude-invokable skills (model-discovered)
+│   ├── ai-assistant/              ← + references/manifest-example.md
 │   ├── auth-integration/SKILL.md
-│   ├── docker-patterns/SKILL.md
+│   ├── cloud-workflow/SKILL.md
+│   ├── jenkins-pipeline/SKILL.md
+│   ├── medialine-dev-credentials/SKILL.md
 │   ├── object-storage/SKILL.md
+│   ├── platform-services/         ← index of shared services
+│   │                                 + references/widget-build-wiring.md
 │   ├── port-allocation/SKILL.md
+│   ├── pulse-feedback/SKILL.md
 │   ├── vector-search/SKILL.md
 │   └── vibes-conventions/SKILL.md
 ├── rules/                         ← always-loaded conventions (Medialine extension)
+│   ├── app-baseline.md
 │   ├── branch-workflow.md
+│   ├── cloud-only.md
 │   ├── conventional-commits.md
-│   ├── docker-first.md
+│   ├── feedback-loop.md
 │   ├── medialine-stack.md
 │   └── security.md
 ├── agents/                        ← subagent definitions

@@ -6,9 +6,10 @@ model: haiku
 maxTurns: 15
 skills:
   - vibes-conventions
-  - docker-patterns
+  - cloud-workflow
   - auth-integration
   - port-allocation
+  - platform-services
 ---
 
 You are the VIBES v3 convention compliance reviewer at Medialine AG. Your job is to audit projects and report violations.
@@ -83,6 +84,16 @@ When asked to review a project, check ALL of the following categories. For each 
 - [ ] Jenkinsfile present
 - [ ] Convention check stage in pipeline
 - [ ] Build, test, push, deploy stages defined
+
+### 9. Platform Baseline (see rules/app-baseline.md)
+- [ ] Pulse feedback widget: `@pulse/widget` in frontend/package.json, wrapper component, mounted at app root
+- [ ] Pulse: Dockerfile `widget-builder` stage + Jenkinsfile `--build-context pulse-widget=`
+- [ ] Assistant widget: `@medialine/assistant` mounted in Layout with `token` AND `appBaseUrl` props
+- [ ] Assistant backend: `/api/assistant-tools/manifest` exists with a non-empty `glossary`
+- [ ] Assistant tool callbacks are GET, read-only, and apply ownership checks (not just the enabled-gate)
+- [ ] Assistant gated by `assistant_enabled` + `assistant_visible_to_all` admin settings
+- [ ] No privately-built equivalent of a shared service (own feedback form, own chatbot, own MinIO, direct vendor API calls)
+- [ ] `docs/` directory present describing what the app is for and its domain vocabulary
 
 ## Output Format
 
