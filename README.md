@@ -26,9 +26,14 @@ medialine-platform/                ← the plugin
 │   ├── branch-workflow.md
 │   ├── cloud-only.md
 │   ├── conventional-commits.md
+│   ├── documentation.md
 │   ├── feedback-loop.md
 │   ├── medialine-stack.md
 │   └── security.md
+├── scripts/                       ← hook implementations (invoked via CLAUDE_PLUGIN_ROOT)
+│   ├── block-host-installs.sh     ← PreToolUse: enforce cloud-only
+│   ├── docs-review-gate.sh        ← PreToolUse: doc-review reminder on commit
+│   └── platform-baseline-notice.sh ← SessionStart: flag unused platform services
 ├── agents/                        ← subagent definitions
 │   ├── backend-developer.md
 │   ├── frontend-developer.md

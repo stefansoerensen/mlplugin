@@ -1,0 +1,9 @@
+# Hook scripts are executed by bash on every platform, including Windows.
+# A CRLF checkout makes bash fail with "$'\r': command not found", which
+# presents as a hook that silently does nothing. Force LF.
+*.sh text eol=lf
+
+# Markdown and JSON are read by Claude, not by a shell, but keeping the whole
+# plugin LF avoids noisy diffs between Windows and Linux checkouts.
+*.md text eol=lf
+*.json text eol=lf

@@ -20,7 +20,7 @@ Every new user-facing app ships all four of these before it is considered done:
    over time. → [`ai-assistant`](../skills/ai-assistant/SKILL.md)
 4. **`docs/` in the repo** — what the app is for, its domain vocabulary, and its
    integration points. `CLAUDE.md` covers how to work on the app; `docs/` covers
-   what the app *is*.
+   what the app *is*. → [`documentation`](./documentation.md)
 
 ## Existing apps
 
