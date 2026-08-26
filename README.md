@@ -6,6 +6,7 @@ Medialine's Claude Code plugin marketplace + the `medialine-platform` plugin it 
 
 ```
 .claude-plugin/marketplace.json   ← marketplace catalog (lists medialine-platform)
+docs/plugin-handbuch.md           ← Handbuch (DE): Installation, Update, Nutzung, Fehlerbehebung
 medialine-platform/                ← the plugin
 ├── .claude-plugin/plugin.json     ← plugin manifest (name, version, author)
 ├── skills/                        ← Claude-invokable skills (model-discovered)
@@ -97,7 +98,9 @@ A single `claude-config-dri` in TaskTool (extension of `platform.users.role`) ow
 
 This plugin uses semver in `medialine-platform/.claude-plugin/plugin.json`. Repos pin major versions (e.g. `^1.0.0`) and auto-pick up minor/patch bumps. Major bumps require explicit per-repo updates.
 
-**Every merged change MUST bump the version — docs-only changes included.** Installs are keyed on the version string. If the version is unchanged, the installer sees the plugin as already up to date and never copies the new content, so the change reaches nobody: it sits in the marketplace clone looking merged while every session keeps loading the old copy. Re-adding the marketplace does not fix it, because the install step still sees a matching version.
+**Every merged change under `medialine-platform/` MUST bump the version — docs-only changes included.** Installs are keyed on the version string. If the version is unchanged, the installer sees the plugin as already up to date and never copies the new content, so the change reaches nobody: it sits in the marketplace clone looking merged while every session keeps loading the old copy. Re-adding the marketplace does not fix it, because the install step still sees a matching version.
+
+Repo-level files are **not** part of the installed payload — only `medialine-platform/**` is copied into an install. Changes limited to `README.md`, `QUARTERLY_REVIEW.md` or `docs/` therefore need no bump.
 
 This plugin is almost entirely rules and skills, so a docs change *is* the behaviour change. There is no content edit here that does not warrant a bump.
 
@@ -115,6 +118,7 @@ diff -rq ~/.claude/plugins/marketplaces/medialine/medialine-platform \
 
 ## Related
 
+- Handbuch für Entwickler (DE): [docs/plugin-handbuch.md](./docs/plugin-handbuch.md)
 - The rollout plan: `tasktool/.claude/plans/logical-toasting-dolphin.md`
 - Anthropic plugin docs: <https://code.claude.com/docs/en/plugins>
 - Marketplace docs: <https://code.claude.com/docs/en/plugin-marketplaces>
