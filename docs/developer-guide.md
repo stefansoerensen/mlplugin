@@ -1,15 +1,15 @@
-# Claude Code Plugin: `medialine-platform`
+# Developer Guide: Claude Code Plugin `medialine-platform`
 
-> **Stand:** August 2026 · **Plugin-Version:** 1.7.x · **Verantwortlich:** `claude-config-dri`
-> **Repository:** <https://gitea.medialine.com/medialine/claude-plugin-platform>
+> **Zielgruppe:** Entwicklerinnen und Entwickler, die mit Claude Code an Medialine-Projekten arbeiten.
+> Für Betrieb, Bereitstellung und Release siehe [admin-guide.md](./admin-guide.md).
+>
+> **Stand:** August 2026 · **Plugin-Version:** 1.7.x · **Repository:** <https://gitea.medialine.com/medialine/claude-plugin-platform>
 
 ---
 
 ## 1. Worum geht es?
 
 Das Plugin `medialine-platform` liefert allen Entwicklerinnen und Entwicklern **eine gemeinsame Arbeitsgrundlage für Claude Code**. Statt in jedem Repository dieselben Konventionen erneut zu erklären, werden sie an einer Stelle gepflegt und automatisch in jede Session geladen.
-
-Konkret bekommt Claude damit:
 
 | Bestandteil | Wirkung |
 |---|---|
@@ -25,13 +25,9 @@ Der zentrale Nutzen: **Wissen über die Plattform steht dort zur Verfügung, wo 
 
 ## 2. Voraussetzungen
 
-Vor der Installation müssen zwei Dinge erfüllt sein.
-
 ### 2.1 Netzwerkzugang
 
 `gitea.medialine.com` und `tasktool.medialine.com` liegen im internen Overlay-Netz (`100.64.0.0/10`). Ohne aktive VPN-Verbindung schlägt bereits die Namensauflösung fehl.
-
-Schnelltest:
 
 ```bash
 nslookup gitea.medialine.com
@@ -45,7 +41,7 @@ Kommt keine Antwort oder `NXDOMAIN`, ist die VPN-Verbindung nicht aktiv. Alles W
 
 Für die MCP-Server wird ein persönlicher Token benötigt. Alle sechs Server verwenden **denselben** Token: `MEDIALINE_MCP_TOKEN`.
 
-1. Rolle `developer` in TaskTool anfordern. Ein Admin setzt sie unter `/admin/users`.
+1. Rolle `developer` in TaskTool anfordern. Ein Admin setzt sie unter `/admin/users` (siehe [admin-guide.md](./admin-guide.md#2-entwickler-onboarding)).
 2. Token unter `/dev/me/credentials` abholen. Der Klartext wird **nur einmal** angezeigt.
 3. Als Umgebungsvariable dauerhaft hinterlegen:
 
@@ -80,20 +76,18 @@ Jedes Medialine-Repository enthält eine eingecheckte `.claude/settings.json`:
 }
 ```
 
-Beim ersten Öffnen des Ordners fragt Claude Code, ob dem Verzeichnis vertraut wird, installiert anschließend den Marketplace `medialine` und aktiviert das Plugin beim Session-Start. Ein manueller Schritt ist nicht nötig.
+Beim ersten Öffnen des Ordners fragt Claude Code, ob dem Verzeichnis vertraut wird, installiert anschließend den Marketplace `medialine` und aktiviert das Plugin beim Session-Start.
 
 > **Achtung:** Der Wert für `source` lautet `"git"`. Ein vereinzelt anzutreffendes `"source": "url"` ist ungültig und verhindert die Installation.
 
 ### 3.2 Manuell
-
-Falls das Repository noch keine `.claude/settings.json` besitzt:
 
 ```text
 /plugin marketplace add https://gitea.medialine.com/medialine/claude-plugin-platform.git
 /plugin install medialine-platform@medialine
 ```
 
-In der VS-Code-Erweiterung stehen diese Unterbefehle **nicht** als Eingabe zur Verfügung. Dort wird stattdessen das Panel `/plugin` geöffnet und im Reiter **Marketplaces** gearbeitet.
+In der VS-Code-Erweiterung stehen diese Unterbefehle **nicht** als Eingabe zur Verfügung. Dort wird das Panel `/plugin` geöffnet und im Reiter **Marketplaces** gearbeitet.
 
 ### 3.3 Installation prüfen
 
@@ -126,11 +120,11 @@ VS-Code-Erweiterung: Panel `/plugin` → Reiter **Marketplaces** → Marketplace
 
 ### 4.3 Was `autoUpdate` tatsächlich tut
 
-`autoUpdate: true` aktualisiert den **Marketplace-Klon**, nicht die **installierte Kopie**. Beides kann auseinanderlaufen: Der Klon ist aktuell, die Installation bleibt alt. Deshalb sind beide Befehle aus 4.2 nötig. Der erste holt den Stand, der zweite installiert ihn.
+`autoUpdate: true` aktualisiert den **Marketplace-Klon**, nicht die **installierte Kopie**. Beides kann auseinanderlaufen: Der Klon ist aktuell, die Installation bleibt alt. Deshalb sind beide Befehle aus 4.2 nötig — der erste holt den Stand, der zweite installiert ihn.
 
 ### 4.4 Installierte Version prüfen
 
-Die Versionsnummer allein ist **kein** verlässlicher Nachweis. Zwei Installationen können dieselbe Nummer tragen und unterschiedlichen Inhalt haben. Verlässlich ist nur ein Vergleich:
+Die Versionsnummer allein ist **kein** verlässlicher Nachweis. Zwei Installationen können dieselbe Nummer tragen und unterschiedlichen Inhalt haben:
 
 ```bash
 diff -rq ~/.claude/plugins/marketplaces/medialine/medialine-platform \
@@ -198,8 +192,6 @@ Alle benötigen `MEDIALINE_MCP_TOKEN`, siehe Abschnitt 2.2.
 
 Für Rules und Skills ist **keine besondere Bedienung nötig**. Rules gelten automatisch, Skills werden von Claude anhand des Gesprächskontexts herangezogen.
 
-Praktische Beispiele:
-
 - „Bau eine neue App für X" → `app-baseline` und `platform-services` greifen, Claude richtet SSO, Pulse und Assistent mit ein.
 - „Nutzer sollen Feedback geben können" → `pulse-feedback` wird geladen, statt ein eigenes Formular zu bauen.
 - „Wo liegen die Logs von klar auf Prod?" → Zugriff über `medialine-diag`.
@@ -211,10 +203,10 @@ Ein Skill lässt sich auch ausdrücklich anfordern: „Nutze den Skill `ai-assis
 
 ## 7. Claude Desktop
 
-Claude Desktop verhält sich **anders als Claude Code**. Zwei Einschränkungen sind relevant:
+Claude Desktop verhält sich **anders als Claude Code**:
 
 1. **Marketplace-Quellen.** Beim Hinzufügen über die Oberfläche werden nur `github.com`, `gitlab.com` und `bitbucket.org` akzeptiert. Ein Gitea-Repository lässt sich auf diesem Weg nicht eintragen.
-2. **MCP-Server.** Remote-MCP-Server können von Benutzerinnen und Benutzern **nicht selbst** hinzugefügt werden. Sie sind ausschließlich über eine administrative Bereitstellung verfügbar, etwa `managedMcpServers` oder Organisations-Plugins.
+2. **MCP-Server.** Remote-MCP-Server können **nicht selbst** hinzugefügt werden. Sie sind ausschließlich über eine administrative Bereitstellung verfügbar — siehe [admin-guide.md](./admin-guide.md#5-claude-desktop-bereitstellen).
 
 Skills, Rules, Agents und Slash-Commands funktionieren. Die sechs MCP-Server stehen ohne administrative Bereitstellung nicht zur Verfügung.
 
@@ -234,7 +226,7 @@ Skills, Rules, Agents und Slash-Commands funktionieren. Die sechs MCP-Server ste
 | Token gesetzt, dennoch Fehler | Variable ist im gestarteten Prozess nicht bekannt | Neue PowerShell über das Startmenü öffnen und `$env:MEDIALINE_MCP_TOKEN.Length` prüfen |
 | Neue Skills fehlen nach dem Update | Session hält den alten Stand | Fenster neu laden |
 | Plugin erscheint mehrfach | Ein Eintrag pro Scope | Kein Fehler, siehe 3.3 |
-| Änderung ist gemergt, wirkt aber nicht | Version wurde nicht erhöht | Beim DRI melden. Ohne Versionssprung erreicht der Inhalt keine Installation. |
+| Änderung ist gemergt, wirkt aber nicht | Version wurde nicht erhöht | Beim DRI melden, siehe [admin-guide.md](./admin-guide.md#4-release-und-versionierung) |
 | `pip install` wird abgewiesen | `cloud-only`-Hook | Abhängigkeit eintragen, committen, pushen |
 
 ---
@@ -249,18 +241,14 @@ Fällt in einer Session auf, dass ein Skill nicht mehr der Realität entspricht 
 
 1. Frischen Branch von `origin/main` erstellen. **Niemals** einen bereits gemergten Branch weiterverwenden.
 2. PR gegen `main` öffnen und den Jenkins-Build abwarten.
-3. **Version in `medialine-platform/.claude-plugin/plugin.json` erhöhen.** Das gilt auch für reine Dokumentationsänderungen: Installationen werden anhand der Versionsnummer unterschieden. Ohne Erhöhung erreicht der neue Inhalt **keine einzige** Installation, obwohl der PR gemergt ist.
+3. **Version erhöhen**, sobald etwas unter `medialine-platform/` geändert wurde — auch bei reinen Dokumentationsänderungen. Ohne Erhöhung erreicht der Inhalt **keine einzige** Installation. Details im [admin-guide.md](./admin-guide.md#4-release-und-versionierung).
 4. Squash-Merge über die Gitea-Oberfläche.
-
-### 9.3 Quartalsreview
-
-Der DRI prüft das Plugin quartalsweise: veraltete Rules entfernen, Skills gegen die Realität abgleichen, unbenutzte Hooks streichen. Die Checkliste liegt in `QUARTERLY_REVIEW.md` im Repository.
 
 ---
 
 ## 10. Weiterführend
 
+- Betrieb und Release: [admin-guide.md](./admin-guide.md)
 - Repository: <https://gitea.medialine.com/medialine/claude-plugin-platform>
 - Claude Code Plugins: <https://code.claude.com/docs/en/plugins>
-- Marketplaces: <https://code.claude.com/docs/en/plugin-marketplaces>
 - Zugangsdaten: <https://tasktool.medialine.com/dev/me/credentials>
