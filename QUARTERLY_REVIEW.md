@@ -50,13 +50,22 @@ For every `mcp-*` server in `medialine/mcp-servers`:
 - [ ] **Proposal backlog** at `/admin/claude-feedback`: triage every open proposal that's older than 30 days. Either accept, decline (with reason), or convert to a tracked task.
 - [ ] **Counts by kind**: if 80% of proposals are `mcp-gap`, that's a signal we're under-tooled and should prioritize MCP-server expansion.
 
-## 7. Plugin version bump
+## 7. Plugin version bump + propagation check
 
 After the above:
 
 - [ ] If any change landed, bump `medialine-platform/.claude-plugin/plugin.json` `version` — patch / minor / major per the rules in [README.md](./README.md).
+- [ ] **Audit for unbumped merges.** List everything merged to `main` since the last bump:
+      `git log --oneline <last-version-tag>..main -- medialine-platform/`
+      Any content change in that range without a version bump **never reached a single install**. Bump and re-release it.
 - [ ] Tag the merge commit (`v1.x.y`).
-- [ ] Announce to platform users (Teams / email) so they `/plugin marketplace update medialine`.
+- [ ] **Verify propagation, don't assume it.** A matching version does not prove matching content — the installer skips when the version is unchanged, so a stale install reports the current version number:
+      ```bash
+      diff -rq ~/.claude/plugins/marketplaces/medialine/medialine-platform \
+               ~/.claude/plugins/cache/medialine/medialine-platform/<version>
+      ```
+      Anything other than the `.in_use` marker means the release did not land.
+- [ ] Announce to platform users (Teams / email) so they update via `/plugin marketplace update medialine` (CLI) or the `/plugin` panel's Marketplaces tab (VS Code extension).
 
 ---
 
