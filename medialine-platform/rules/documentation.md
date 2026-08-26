@@ -37,6 +37,31 @@ either way, which means the rule holds only if you actually act on it. Treat the
 reminder as the decision point it is, and if you are unsure which case applies,
 ask the user rather than defaulting to the trailer.
 
+## The audiences (required)
+
+Documentation is written per audience, each in its own file under `docs/`.
+TaskTool shows a coverage matrix of these across the platform and notifies the
+owner when a required one is missing — treat a gap as a task, not an option.
+
+| Persona | File | Covers |
+|---|---|---|
+| **User** | `docs/user-guide.md` | what the app is for, the main jobs, domain vocabulary — for someone using it |
+| **Developer** | `docs/developer-guide.md` | architecture, integration points, how to extend it, which platform services it consumes — for someone building on or maintaining it |
+| **Admin** | `docs/admin-guide.md` | configuration (every setting + default), operating/runbook, access & alerting — for someone operating it |
+
+**What is required depends on the kind:**
+
+- **Apps** — all three (User, Developer, Admin). An app is an end-user product,
+  so it owes a user guide as much as developer and admin docs.
+- **Services** — Developer and Admin only. A service has no end users; it is
+  consumed by developers and operated by admins, so a user guide does not apply.
+
+`CLAUDE.md` is separate — it is for Claude working *in* the repo (stack, structure,
+how to run and deploy), not one of the human audiences.
+
+An empty file does not count as coverage — write the real content, or leave the
+gap visible so it gets filled.
+
 ## What good documentation covers
 
 Write for someone who has never seen the app:
