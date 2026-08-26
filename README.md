@@ -76,15 +76,20 @@ skills/rules/agents/hooks all light up. No manual
 > so the git marketplace source can fetch — the same cert any gitea clone needs.
 > No `http.sslVerify=false` required.
 
-To pull a new version: `autoUpdate` refreshes the marketplace on startup; or run
-`/plugin marketplace update medialine` then `/plugin update medialine-platform@medialine`.
+To pull a new version: `autoUpdate` refreshes the **marketplace clone**, which is
+not the same as updating your **installed** copy — the clone can be current while
+the install is stale. In the Claude Code CLI, run `/plugin marketplace update
+medialine` then `/plugin update medialine-platform@medialine`. The VS Code
+extension has no command line for these: use the `/plugin` panel's
+**Marketplaces** tab instead. Either way, reload the window afterwards — plugins
+load at session start, so a running session keeps the copy it began with.
 
 ## Governance
 
 A single `claude-config-dri` in TaskTool (extension of `platform.users.role`) owns this repo. They:
 
 - Approve every PR (default branch is `main`, protected — see [Branch Workflow](./medialine-platform/rules/branch-workflow.md))
-- Bump the plugin's `version` in `medialine-platform/.claude-plugin/plugin.json` on release
+- Bump the plugin's `version` in `medialine-platform/.claude-plugin/plugin.json` on **every** merged change, docs included — an unbumped change never reaches installs (see [Versioning](#versioning))
 - Run the quarterly convention review per Anthropic's [best-practices guidance](https://claude.com/blog/how-claude-code-works-in-large-codebases-best-practices-and-where-to-start) — retire rules that newer models no longer need, add skills that real session patterns prove worth promoting
 - Triage proposals from the closed feedback loop (see Track D in the rollout plan: Claude proposes plugin updates when it spots reusable patterns; MCP-server telemetry surfaces repeated curl-fallbacks)
 
@@ -92,10 +97,21 @@ A single `claude-config-dri` in TaskTool (extension of `platform.users.role`) ow
 
 This plugin uses semver in `medialine-platform/.claude-plugin/plugin.json`. Repos pin major versions (e.g. `^1.0.0`) and auto-pick up minor/patch bumps. Major bumps require explicit per-repo updates.
 
+**Every merged change MUST bump the version — docs-only changes included.** Installs are keyed on the version string. If the version is unchanged, the installer sees the plugin as already up to date and never copies the new content, so the change reaches nobody: it sits in the marketplace clone looking merged while every session keeps loading the old copy. Re-adding the marketplace does not fix it, because the install step still sees a matching version.
+
+This plugin is almost entirely rules and skills, so a docs change *is* the behaviour change. There is no content edit here that does not warrant a bump.
+
 When you change the plugin contents:
-- **Patch** (`1.0.x`): typo fix, clarification, no behavior change
+- **Patch** (`1.0.x`): typo fix, clarification, reworded rule — anything that neither adds nor removes a component
 - **Minor** (`1.x.0`): new skill / new rule / new agent / new hook (additive)
 - **Major** (`x.0.0`): removed or renamed convention, hook that may break existing repos
+
+A version number alone does not prove a release landed — two installs can share a version and differ in content. To verify:
+
+```bash
+diff -rq ~/.claude/plugins/marketplaces/medialine/medialine-platform \
+         ~/.claude/plugins/cache/medialine/medialine-platform/<version>
+```
 
 ## Related
 
