@@ -6,7 +6,8 @@ Medialine's Claude Code plugin marketplace + the `medialine-platform` plugin it 
 
 ```
 .claude-plugin/marketplace.json   ← marketplace catalog (lists medialine-platform)
-docs/plugin-handbuch.md           ← Handbuch (DE): Installation, Update, Nutzung, Fehlerbehebung
+docs/developer-guide.md           ← Entwickler (DE): Installation, Update, Nutzung
+docs/admin-guide.md               ← Betrieb (DE): Onboarding, Release, Bereitstellung
 medialine-platform/                ← the plugin
 ├── .claude-plugin/plugin.json     ← plugin manifest (name, version, author)
 ├── skills/                        ← Claude-invokable skills (model-discovered)
@@ -118,7 +119,8 @@ diff -rq ~/.claude/plugins/marketplaces/medialine/medialine-platform \
 
 ## Related
 
-- Handbuch für Entwickler (DE): [docs/plugin-handbuch.md](./docs/plugin-handbuch.md)
+- Entwickler-Handbuch (DE): [docs/developer-guide.md](./docs/developer-guide.md)
+- Admin-Handbuch (DE): [docs/admin-guide.md](./docs/admin-guide.md)
 - The rollout plan: `tasktool/.claude/plans/logical-toasting-dolphin.md`
 - Anthropic plugin docs: <https://code.claude.com/docs/en/plugins>
 - Marketplace docs: <https://code.claude.com/docs/en/plugin-marketplaces>
