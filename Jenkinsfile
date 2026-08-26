@@ -89,6 +89,45 @@ print('hooks.json OK: %s event(s)' % len(h['hooks']))
             }
         }
 
+        stage('Version bump check') {
+            when { not { branch 'main' } }
+            steps {
+                sh '''
+                    set -e
+                    git fetch origin main --quiet 2>/dev/null || git fetch origin main
+
+                    # Only medialine-platform/** is installed. plugin.json itself is
+                    # excluded: a lone version change is not a payload change.
+                    CHANGED=$(git diff --name-only origin/main...HEAD -- medialine-platform/ \
+                              | grep -v "^medialine-platform/.claude-plugin/plugin.json$" || true)
+
+                    if [ -z "$CHANGED" ]; then
+                        echo "No payload change under medialine-platform/ — version bump not required"
+                        exit 0
+                    fi
+
+                    echo "Payload changed:"
+                    echo "$CHANGED" | sed "s/^/  /"
+
+                    OLD=$(git show origin/main:medialine-platform/.claude-plugin/plugin.json \
+                          | python3 -c "import json,sys; print(json.load(sys.stdin)['version'])")
+                    NEW=$(python3 -c "import json; print(json.load(open('medialine-platform/.claude-plugin/plugin.json'))['version'])")
+
+                    if [ "$OLD" = "$NEW" ]; then
+                        echo ""
+                        echo "FAIL: payload changed but version is still $OLD."
+                        echo "Installs are keyed on the version string, so an unbumped change"
+                        echo "reaches NO installation — it sits in the marketplace clone looking"
+                        echo "merged while every session keeps loading the old copy."
+                        echo "Bump medialine-platform/.claude-plugin/plugin.json (see README > Versioning)."
+                        exit 1
+                    fi
+
+                    echo "Version bump OK: $OLD -> $NEW"
+                '''
+            }
+        }
+
         stage('Tag version (main only)') {
             when { branch 'main' }
             steps {
