@@ -51,6 +51,51 @@ Für die MCP-Server wird ein persönlicher Token benötigt. Alle sechs Server ve
 
 4. **VS Code vollständig beenden und neu starten.** Ein Reload des Fensters genügt nicht, da Umgebungsvariablen nur von neu gestarteten Prozessen übernommen werden.
 
+### 2.3 Git-Anmeldung für Gitea
+
+Das Plugin wird per `git clone` von Gitea geholt. **Gitea verlangt dafür eine Anmeldung** — anonym lässt sich das Repository nicht klonen.
+
+> **Wichtig:** Git liest die Umgebungsvariablen **nicht**. `MEDIALINE_MCP_TOKEN` und `MEDIALINE_GITEA_PAT` werden von den MCP-Servern benutzt, nicht von Git. Git holt Zugangsdaten nur aus der URL, aus dem Windows Credential Manager oder aus der `.gitconfig`.
+
+Fehlt die Anmeldung, scheitert das Hinzufügen des Marketplace mit:
+
+```text
+fatal: Cannot prompt because user interactivity has been disabled.
+fatal: unable to get password from user
+```
+
+Claude Code klont im Hintergrund und kann deshalb nicht nach einem Passwort fragen. Die Anmeldung muss **vorher** einmal eingerichtet werden.
+
+**Weg 1 — empfohlen: einmal von Hand anmelden.** In einem normalen Terminal:
+
+```powershell
+git ls-remote https://gitea.medialine.com/medialine/claude-plugin-platform.git
+```
+
+Git fragt nach Benutzername und Passwort:
+
+- **Benutzername:** der eigene Gitea-Benutzername
+- **Passwort:** der Gitea-PAT (derselbe Wert wie in `MEDIALINE_GITEA_PAT`)
+
+Der Windows Credential Manager speichert das. Danach klappt das Hinzufügen des Marketplace ohne Rückfrage. Kein Token landet im Klartext in einer Datei.
+
+**Weg 2 — falls Weg 1 nicht funktioniert:** den PAT in die Git-Konfiguration eintragen:
+
+```powershell
+git config --global http.https://gitea.medialine.com/.extraheader "Authorization: token <PAT>"
+```
+
+> **Achtung:** Der Teil `https://gitea.medialine.com/` muss drinstehen. Ohne ihn schickt Git den Token an **jeden** Server, auch an GitHub. Außerdem steht der Token dann im Klartext in `%USERPROFILE%\.gitconfig`.
+
+**Prüfen**, ob die Anmeldung steht — diesmal ohne Rückfrage erlaubt:
+
+```powershell
+$env:GIT_TERMINAL_PROMPT = "0"
+git ls-remote https://gitea.medialine.com/medialine/claude-plugin-platform.git
+```
+
+Erscheint eine Liste mit Commit-Hashes, ist alles bereit. Erscheint `could not read Username`, fehlt die Anmeldung noch.
+
 ---
 
 ## 3. Installation
@@ -222,6 +267,7 @@ Skills, Rules, Agents und Slash-Commands funktionieren. Die sechs MCP-Server ste
 | Symptom | Ursache | Abhilfe |
 |---|---|---|
 | Marketplace lässt sich nicht hinzufügen | Keine VPN-Verbindung | `nslookup gitea.medialine.com` prüfen |
+| `unable to get password from user` beim Hinzufügen | Git hat keine Anmeldung für Gitea. Umgebungsvariablen helfen hier nicht | Git-Anmeldung einrichten, siehe 2.3 |
 | MCP-Server melden Fehler, OAuth-Meldung erscheint | `MEDIALINE_MCP_TOKEN` fehlt oder ist ungültig | Token setzen, VS Code **vollständig** neu starten |
 | Token gesetzt, dennoch Fehler | Variable ist im gestarteten Prozess nicht bekannt | Neue PowerShell über das Startmenü öffnen und `$env:MEDIALINE_MCP_TOKEN.Length` prüfen |
 | Neue Skills fehlen nach dem Update | Session hält den alten Stand | Fenster neu laden |
