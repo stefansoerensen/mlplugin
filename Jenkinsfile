@@ -94,7 +94,12 @@ print('hooks.json OK: %s event(s)' % len(h['hooks']))
             steps {
                 sh '''
                     set -e
-                    git fetch origin main --quiet 2>/dev/null || git fetch origin main
+                    # The multibranch checkout already fetched refs/remotes/origin/main
+                    # alongside the PR head; a plain `git fetch` here has no credentials
+                    # in a PR build and failed every PR build so far (exit 128).
+                    if ! git rev-parse --verify --quiet origin/main >/dev/null; then
+                        git fetch origin main --quiet 2>/dev/null || git fetch origin main
+                    fi
 
                     # Only medialine-platform/** is installed. plugin.json itself is
                     # excluded: a lone version change is not a payload change.
