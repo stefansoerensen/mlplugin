@@ -42,7 +42,7 @@ Kommt keine Antwort oder `NXDOMAIN`, ist die VPN-Verbindung nicht aktiv. Alles W
 Für die MCP-Server wird ein persönlicher Token benötigt. Alle sechs Server verwenden **denselben** Token: `MEDIALINE_MCP_TOKEN`. Für `mcp-jenkins` und direkte Jenkins-Aufrufe kommt `MEDIALINE_JENKINS_TOKEN` hinzu. **Für Git wird kein Token benötigt** (siehe 2.3).
 
 1. Rolle `developer` in TaskTool anfordern. Ein Admin setzt sie unter `/admin/users` (siehe [admin-guide.md](./admin-guide.md#2-entwickler-onboarding)).
-2. Unter `/dev/onboarding` auf **Generate my tokens** klicken. Der Klartext wird **nur einmal** angezeigt — als fertiges Skript.
+2. Unter `/dev/me/setup` auf **Generate my tokens** klicken. Der Klartext wird **nur einmal** angezeigt — als fertiges Skript.
 3. Das Skript in PowerShell einfügen. Es setzt beide Variablen dauerhaft:
 
 ```powershell
@@ -294,4 +294,4 @@ Fällt in einer Session auf, dass ein Skill nicht mehr der Realität entspricht 
 - Betrieb und Release: [admin-guide.md](./admin-guide.md)
 - Repository: <https://gitea.medialine.com/medialine/claude-plugin-platform>
 - Claude Code Plugins: <https://code.claude.com/docs/en/plugins>
-- Zugangsdaten: <https://tasktool.medialine.com/dev/me/credentials>
+- Zugangsdaten: <https://tasktool.medialine.com/dev/me/setup>

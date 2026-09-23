@@ -43,8 +43,8 @@ Jede Entwicklerin und jeder Entwickler braucht zwei Tokens von TaskTool. Für di
 1. Die Person meldet sich einmal unter `https://gitea.medialine.com` mit Entra an; dadurch entsteht ihr Gitea-Konto.
 2. Unter `/admin/users` die Rolle auf `developer` setzen.
 3. In Gitea das Konto in die Organisation aufnehmen: `https://gitea.medialine.com/org/medialine/teams` → Team öffnen → **Add Team Member**. Ohne diesen Schritt sieht die Person alle Repositories als `404 not found`.
-4. Die Person erzeugt ihre beiden Tokens selbst unter `/dev/onboarding` (**Generate my tokens**, Klartext nur einmal) und folgt den Schritten dort.
-5. Prüfung über `/dev/onboarding` (Environment checks): Gitea-Konto gefunden, kürzlich angemeldet, beide Tokens aktiv.
+4. Die Person erzeugt ihre beiden Tokens selbst unter `/dev/me/setup` (**Generate my tokens**, Klartext nur einmal) und folgt den Schritten dort.
+5. Prüfung über `/dev/me/setup` (Environment checks): Gitea-Konto gefunden, kürzlich angemeldet, beide Tokens aktiv.
 
 > Konten, die noch einen alten, von TaskTool auf dem Gitea-Admin ausgestellten Token besitzen, sehen dort eine Warnung. Diese Tokens werden in einer späteren Phase widerrufen; bis dahin funktionieren sie.
 
