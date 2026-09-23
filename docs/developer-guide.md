@@ -70,6 +70,8 @@ Git für Windows bringt den **Git Credential Manager** mit. Er erkennt Gitea, **
 
 Erscheint eine Liste mit Zeilen, die auf `refs/heads/main` enden, ist alles bereit.
 
+4. **Connect Gitea für Claude Code.** Die Gitea-Werkzeuge in Claude Code (`medialine-gitea`, `medialine-plugin`) arbeiten unter **eurem** Namen — Branches, Dateien und PRs, die sie anlegen, tragen euren Account. Dafür einmalig unter `https://tasktool.medialine.com/dev/me/setup` bei Schritt 2 auf **Connect Gitea** klicken und in Gitea bestätigen. Solange das fehlt, antworten die Gitea-Werkzeuge mit „Gitea is not connected … Connect Gitea" — normales `git push` ist davon nicht betroffen. Die Freigabe läuft nach 30 Tagen ohne Nutzung ab; dann meldet der Check `gitea.connected` „reconnect", und der Klick wird wiederholt.
+
 > **Wichtig:** Git liest **keine** Umgebungsvariablen. `MEDIALINE_MCP_TOKEN` und `MEDIALINE_JENKINS_TOKEN` sind für die MCP-Server und Jenkins da, nicht für Git.
 
 **Fragt Git nach Benutzername und Passwort statt den Browser zu öffnen — oder „klappt" es, ohne dass je ein Browser aufging?** Dann verwendet Git eine alte gespeicherte Anmeldung oder einen alten Token weiter. Beides entfernen (eine Meldung „nicht gefunden" ist in Ordnung):
