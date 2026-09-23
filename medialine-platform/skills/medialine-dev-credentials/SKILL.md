@@ -10,6 +10,7 @@ Three systems, two tokens, one browser sign-in:
 | System | How you authenticate | Env var |
 |---|---|---|
 | **Gitea** (git clone/push, plugin marketplace) | Git Credential Manager opens the browser once; you sign in with Entra. No token. | none |
+| **Gitea via Claude Code** (medialine-gitea, medialine-plugin tools) | *Connect Gitea* once on `/dev/me/setup`; tasktool keeps an OAuth token for you and the tools act as you. No token to copy. | none |
 | **MCP servers** (diag, gitea, jenkins, plugin, registry, ext-api) | tasktool-issued bearer `mlmcp_…` | `MEDIALINE_MCP_TOKEN` |
 | **Jenkins** (mcp-jenkins, raw Jenkins API) | tasktool-issued token `mljenkins_…` | `MEDIALINE_JENKINS_TOKEN` |
 
@@ -20,6 +21,7 @@ Tasktool stores only the sha256 hash of each token. Plaintext is shown ONCE at m
 1. **Gitea account** — open <https://gitea.medialine.com>, click *Sign in with Medialine Entra ID*. This creates the account.
 2. **Get promoted to developer** — an admin sets your `role` to `developer` in `/admin/users`; tasktool then adds your Gitea account to the `medialine` `Developers` team (needs step 1 first). Until then, repositories show as `not found`.
 3. **Save the git login** — in a normal terminal: `git ls-remote https://gitea.medialine.com/medialine/claude-plugin-platform.git`. The browser opens; sign in. GCM stores the OAuth token; from now on git works from any tool, including Claude Code.
+   **Then connect Gitea for Claude Code:** on `/dev/me/setup`, step 2, click *Connect Gitea* and approve once — the Gitea tools in Claude Code act as you from then on (renew after 30 days without use; the `gitea.connected` check tells you).
 4. **Tokens** — on `/dev/me/setup` click *Generate my tokens* and run the script it shows:
 
    **Windows (PowerShell, persistent for your user)**:
@@ -46,7 +48,7 @@ Tasktool stores only the sha256 hash of each token. Plaintext is shown ONCE at m
 ## Where each credential is checked
 
 - **Gitea**: git sends the OAuth token GCM stored. Gitea records the push under *your* account. GCM renews it in the browser when the refresh token (30 days) has expired.
-- **MCP bearer**: every `/mcp` request to `https://tasktool.medialine.com/mcp/<slug>/mcp` carries it; the servers call `tasktool /api/dev-credentials/validate` (60 s cache). Today mcp-gitea then talks to Gitea with a shared service token — a later phase makes it act as you.
+- **MCP bearer**: every `/mcp` request to `https://tasktool.medialine.com/mcp/<slug>/mcp` carries it; the servers call `tasktool /api/dev-credentials/validate` (60 s cache). mcp-gitea and mcp-plugin then trade that bearer at tasktool for *your* Gitea OAuth token and act as you — there is no shared Gitea token in those containers.
 - **Jenkins token**: same validate path for mcp-jenkins; also usable for raw Jenkins API (`curl -u <you>:mljenkins_…`).
 
 ## Troubleshooting
@@ -59,6 +61,8 @@ Tasktool stores only the sha256 hash of each token. Plaintext is shown ONCE at m
 | `401 missing_or_invalid_authorization_header` from `/mcp` | env var not set in the shell that launched Claude Code | set it, fully restart |
 | `401 invalid_or_revoked_token` | token revoked or never minted — check `/dev/me/setup` | regenerate |
 | All 6 servers fail simultaneously | tasktool-backend down | check `/api/health` |
+| Gitea tool answers "Gitea is not connected for your account" | you never clicked *Connect Gitea* | `/dev/me/setup` → step 2 → *Connect Gitea*, approve, retry |
+| Gitea tool answers "Your Gitea connection expired" | 30 days without use, or you revoked the TaskTool app in Gitea | `/dev/me/setup` → *Connect Gitea* again |
 
 ## Never do this
 
