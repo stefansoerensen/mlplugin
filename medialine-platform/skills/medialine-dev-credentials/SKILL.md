@@ -18,7 +18,7 @@ Tasktool stores only the sha256 hash of each token. Plaintext is shown ONCE at m
 ## One-time setup
 
 1. **Gitea account** — open <https://gitea.medialine.com>, click *Sign in with Medialine Entra ID*. This creates the account.
-2. **Get promoted to developer** — an admin sets your `role` to `developer` in `/admin/users`. Tasktool then mints both tokens (`auto-provision`) and adds you to the Gitea organisation.
+2. **Get promoted to developer** — an admin sets your `role` to `developer` in `/admin/users` and adds your Gitea account to the `medialine` organisation. Until both are done, repositories show as `not found`.
 3. **Save the git login** — in a normal terminal: `git ls-remote https://gitea.medialine.com/medialine/claude-plugin-platform.git`. The browser opens; sign in. GCM stores the OAuth token; from now on git works from any tool, including Claude Code.
 4. **Tokens** — on `/dev/onboarding` click *Generate my tokens* and run the script it shows:
 

@@ -59,7 +59,7 @@ Gitea verlangt für jeden Zugriff eine Anmeldung, auch für das Klonen des Plugi
 **So läuft es:**
 
 1. `https://gitea.medialine.com` öffnen und **Sign in with Medialine Entra ID** wählen. Beim ersten Mal entsteht dadurch das Gitea-Konto.
-2. Einem Admin Bescheid geben. Mit der Rolle `developer` nimmt TaskTool das Konto in die Organisation `medialine` auf. Vorher liefern Repositories `404 not found`.
+2. Einem Admin Bescheid geben. Der Admin vergibt die Rolle `developer` in TaskTool **und nimmt das Gitea-Konto in die Organisation `medialine` auf**. Vorher liefern Repositories `404 not found`.
 3. Einmal in einem normalen Terminal:
 
 ```powershell
