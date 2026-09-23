@@ -42,7 +42,7 @@ Kommt keine Antwort oder `NXDOMAIN`, ist die VPN-Verbindung nicht aktiv. Alles W
 Für die MCP-Server wird ein persönlicher Token benötigt. Alle sechs Server verwenden **denselben** Token: `MEDIALINE_MCP_TOKEN`. Für `mcp-jenkins` und direkte Jenkins-Aufrufe kommt `MEDIALINE_JENKINS_TOKEN` hinzu. **Für Git wird kein Token benötigt** (siehe 2.3).
 
 1. Rolle `developer` in TaskTool anfordern. Ein Admin setzt sie unter `/admin/users` (siehe [admin-guide.md](./admin-guide.md#2-entwickler-onboarding)).
-2. Unter `/dev/onboarding` auf **Generate my tokens** klicken. Der Klartext wird **nur einmal** angezeigt — als fertiges Skript.
+2. Unter `/dev/me/setup` auf **Generate my tokens** klicken. Der Klartext wird **nur einmal** angezeigt — als fertiges Skript.
 3. Das Skript in PowerShell einfügen. Es setzt beide Variablen dauerhaft:
 
 ```powershell
@@ -59,7 +59,7 @@ Gitea verlangt für jeden Zugriff eine Anmeldung, auch für das Klonen des Plugi
 **So läuft es:**
 
 1. `https://gitea.medialine.com` öffnen und **Sign in with Medialine Entra ID** wählen. Beim ersten Mal entsteht dadurch das Gitea-Konto.
-2. Einem Admin Bescheid geben. Der Admin vergibt die Rolle `developer` in TaskTool **und nimmt das Gitea-Konto in die Organisation `medialine` auf**. Vorher liefern Repositories `404 not found`.
+2. Einem Admin Bescheid geben. Sobald der Admin die Rolle `developer` in TaskTool vergibt, nimmt TaskTool das Gitea-Konto in das Team `Developers` der Organisation `medialine` auf (Voraussetzung: Schritt 1 ist erledigt). Vorher liefern Repositories `404 not found`.
 3. Einmal in einem normalen Terminal:
 
 ```powershell
@@ -72,14 +72,14 @@ Erscheint eine Liste mit Zeilen, die auf `refs/heads/main` enden, ist alles bere
 
 > **Wichtig:** Git liest **keine** Umgebungsvariablen. `MEDIALINE_MCP_TOKEN` und `MEDIALINE_JENKINS_TOKEN` sind für die MCP-Server und Jenkins da, nicht für Git.
 
-**Fragt Git nach Benutzername und Passwort statt den Browser zu öffnen?** Dann steht eine alte Einstellung im Weg:
+**Fragt Git nach Benutzername und Passwort statt den Browser zu öffnen — oder „klappt" es, ohne dass je ein Browser aufging?** Dann verwendet Git eine alte gespeicherte Anmeldung oder einen alten Token weiter. Beides entfernen (eine Meldung „nicht gefunden" ist in Ordnung):
 
 ```powershell
-git config --global --unset credential.https://gitea.medialine.com.provider
+cmdkey /delete:LegacyGeneric:target=git:https://gitea.medialine.com
 git config --global --unset http.https://gitea.medialine.com/.extraheader
 ```
 
-Danach den `git ls-remote`-Befehl erneut ausführen. Ein Medialine-Passwort funktioniert an dieser Stelle **nie** — Gitea kennt es nicht.
+Danach den `git ls-remote`-Befehl erneut ausführen; jetzt öffnet sich der Browser. Ein Medialine-Passwort funktioniert an dieser Stelle **nie** — Gitea kennt es nicht. (macOS: statt der ersten Zeile den Eintrag „gitea.medialine.com" in der Schlüsselbundverwaltung löschen.)
 
 **macOS:** `brew install git git-credential-manager`. **Linux:** `git-credential-oauth` (Paket der Distribution oder <https://github.com/hickford/git-credential-oauth>); es ist in Gitea vorregistriert und arbeitet genauso über den Browser.
 

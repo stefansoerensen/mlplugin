@@ -18,9 +18,9 @@ Tasktool stores only the sha256 hash of each token. Plaintext is shown ONCE at m
 ## One-time setup
 
 1. **Gitea account** — open <https://gitea.medialine.com>, click *Sign in with Medialine Entra ID*. This creates the account.
-2. **Get promoted to developer** — an admin sets your `role` to `developer` in `/admin/users` and adds your Gitea account to the `medialine` organisation. Until both are done, repositories show as `not found`.
+2. **Get promoted to developer** — an admin sets your `role` to `developer` in `/admin/users`; tasktool then adds your Gitea account to the `medialine` `Developers` team (needs step 1 first). Until then, repositories show as `not found`.
 3. **Save the git login** — in a normal terminal: `git ls-remote https://gitea.medialine.com/medialine/claude-plugin-platform.git`. The browser opens; sign in. GCM stores the OAuth token; from now on git works from any tool, including Claude Code.
-4. **Tokens** — on `/dev/onboarding` click *Generate my tokens* and run the script it shows:
+4. **Tokens** — on `/dev/me/setup` click *Generate my tokens* and run the script it shows:
 
    **Windows (PowerShell, persistent for your user)**:
    ```powershell
@@ -35,11 +35,11 @@ Tasktool stores only the sha256 hash of each token. Plaintext is shown ONCE at m
    ```
 
 5. **Fully quit and restart VS Code / the terminal** so the new env vars are inherited (a window reload is not enough).
-6. **Verify** — the *Environment checks* on `/dev/onboarding`: Gitea account found, recent sign-in, both tokens active, six MCP servers reachable.
+6. **Verify** — the *Environment checks* on `/dev/me/setup`: Gitea account found, recent sign-in, both tokens active, six MCP servers reachable.
 
 ## Rotating tokens
 
-- `/dev/onboarding` → *Regenerate my tokens* revokes both and issues new ones (other machines stop working until re-run). *Set up another machine* mints a parallel set without revoking anything.
+- `/dev/me/setup` → *Regenerate my tokens* revokes both and issues new ones (other machines stop working until re-run). *Set up another machine* mints a parallel set without revoking anything.
 - Swap the env var, restart the terminal / VS Code.
 - Revocation takes effect within ~60 s (validate-result cache TTL).
 
@@ -54,10 +54,10 @@ Tasktool stores only the sha256 hash of each token. Plaintext is shown ONCE at m
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | `could not read Username … terminal prompts disabled` when adding the marketplace | git has no saved Gitea login | run `git ls-remote …` in a normal terminal once (browser sign-in) |
-| git asks for username + password instead of opening the browser | an old `credential.https://gitea.medialine.com.provider = generic` or `http.….extraheader` setting | `git config --global --unset credential.https://gitea.medialine.com.provider` and `--unset http.https://gitea.medialine.com/.extraheader`, retry |
-| repository `not found` although signed in | account not yet in the `medialine` organisation | ask an admin for the developer role |
+| git asks for username + password instead of opening the browser, or succeeds without ever opening one | git reuses an old saved login (Windows Credential Manager entry `git:https://gitea.medialine.com`) or an old `http.….extraheader` token | `cmdkey /delete:LegacyGeneric:target=git:https://gitea.medialine.com` (macOS: delete the Keychain item) and `git config --global --unset http.https://gitea.medialine.com/.extraheader`, retry |
+| repository `not found` although signed in | account not yet in the `medialine` `Developers` team | ask an admin for the developer role; if you already have it, open `/dev/me/setup` and re-run the checks (they add the membership) |
 | `401 missing_or_invalid_authorization_header` from `/mcp` | env var not set in the shell that launched Claude Code | set it, fully restart |
-| `401 invalid_or_revoked_token` | token revoked or never minted — check `/dev/onboarding` | regenerate |
+| `401 invalid_or_revoked_token` | token revoked or never minted — check `/dev/me/setup` | regenerate |
 | All 6 servers fail simultaneously | tasktool-backend down | check `/api/health` |
 
 ## Never do this
