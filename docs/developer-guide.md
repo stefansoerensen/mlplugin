@@ -42,7 +42,7 @@ Kommt keine Antwort oder `NXDOMAIN`, ist die VPN-Verbindung nicht aktiv. Alles W
 Für die MCP-Server wird ein persönlicher Token benötigt. Alle sechs Server verwenden **denselben** Token: `MEDIALINE_MCP_TOKEN`. Für `mcp-jenkins` und direkte Jenkins-Aufrufe kommt `MEDIALINE_JENKINS_TOKEN` hinzu. **Für Git wird kein Token benötigt** (siehe 2.3).
 
 1. Rolle `developer` in TaskTool anfordern. Ein Admin setzt sie unter `/admin/users` (siehe [admin-guide.md](./admin-guide.md#2-entwickler-onboarding)).
-2. Unter `/dev/onboarding` auf **Generate my tokens** klicken. Der Klartext wird **nur einmal** angezeigt — als fertiges Skript.
+2. Unter `/dev/me/setup` auf **Generate my tokens** klicken. Der Klartext wird **nur einmal** angezeigt — als fertiges Skript.
 3. Das Skript in PowerShell einfügen. Es setzt beide Variablen dauerhaft:
 
 ```powershell
@@ -59,7 +59,7 @@ Gitea verlangt für jeden Zugriff eine Anmeldung, auch für das Klonen des Plugi
 **So läuft es:**
 
 1. `https://gitea.medialine.com` öffnen und **Sign in with Medialine Entra ID** wählen. Beim ersten Mal entsteht dadurch das Gitea-Konto.
-2. Einem Admin Bescheid geben. Der Admin vergibt die Rolle `developer` in TaskTool **und nimmt das Gitea-Konto in die Organisation `medialine` auf**. Vorher liefern Repositories `404 not found`.
+2. Einem Admin Bescheid geben. Sobald der Admin die Rolle `developer` in TaskTool vergibt, nimmt TaskTool das Gitea-Konto in das Team `Developers` der Organisation `medialine` auf (Voraussetzung: Schritt 1 ist erledigt). Vorher liefern Repositories `404 not found`.
 3. Einmal in einem normalen Terminal:
 
 ```powershell
