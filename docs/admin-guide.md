@@ -31,19 +31,21 @@ Eine einzelne Person hat die Rolle `claude-config-dri` in TaskTool und verantwor
 
 ## 2. Entwickler-Onboarding
 
-Jede Entwicklerin und jeder Entwickler braucht drei Tokens. Für die Verbindung zu den MCP-Servern ist davon nur **einer** relevant: `MEDIALINE_MCP_TOKEN`.
+Jede Entwicklerin und jeder Entwickler braucht zwei Tokens von TaskTool. Für die Verbindung zu den MCP-Servern ist davon nur **einer** relevant: `MEDIALINE_MCP_TOKEN`. **Für Git gibt TaskTool keinen Token aus** — die Anmeldung an Gitea ist die eigene Entra-Anmeldung über den Git Credential Manager.
 
 | Token | Wofür | Umgebungsvariable |
 |---|---|---|
 | MCP-Bearer | Claude Code → alle sechs MCP-Server | `MEDIALINE_MCP_TOKEN` |
-| Gitea-PAT | mcp-gitea, Gitea-API | `MEDIALINE_GITEA_PAT` |
 | Jenkins-Token | mcp-jenkins, Jenkins-API | `MEDIALINE_JENKINS_TOKEN` |
 
 **Ablauf:**
 
-1. Unter `/admin/users` die Rolle auf `developer` setzen. TaskTool erzeugt daraufhin automatisch alle drei Tokens (`auto-provision`).
-2. Die Person holt die Klartexte **einmalig** unter `/dev/me/credentials` ab.
-3. Prüfung über `/dev/me/verify`.
+1. Die Person meldet sich einmal unter `https://gitea.medialine.com` mit Entra an; dadurch entsteht ihr Gitea-Konto.
+2. Unter `/admin/users` die Rolle auf `developer` setzen. TaskTool erzeugt daraufhin automatisch beide Tokens (`auto-provision`).
+3. Die Person holt die Klartexte **einmalig** unter `/dev/onboarding` ab und folgt den vier Schritten dort.
+4. Prüfung über `/dev/onboarding` (Environment checks): Gitea-Konto gefunden, kürzlich angemeldet, beide Tokens aktiv.
+
+> Konten, die noch einen alten, von TaskTool auf dem Gitea-Admin ausgestellten Token besitzen, sehen dort eine Warnung. Diese Tokens werden in einer späteren Phase widerrufen; bis dahin funktionieren sie.
 
 TaskTool speichert ausschließlich den SHA-256-Hash. Ein Klartext lässt sich nicht wiederherstellen; bei Verlust muss neu ausgestellt werden.
 

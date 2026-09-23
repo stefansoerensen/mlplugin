@@ -39,53 +39,49 @@ Kommt keine Antwort oder `NXDOMAIN`, ist die VPN-Verbindung nicht aktiv. Alles W
 
 ### 2.2 Plattform-Token
 
-Für die MCP-Server wird ein persönlicher Token benötigt. Alle sechs Server verwenden **denselben** Token: `MEDIALINE_MCP_TOKEN`.
+Für die MCP-Server wird ein persönlicher Token benötigt. Alle sechs Server verwenden **denselben** Token: `MEDIALINE_MCP_TOKEN`. Für `mcp-jenkins` und direkte Jenkins-Aufrufe kommt `MEDIALINE_JENKINS_TOKEN` hinzu. **Für Git wird kein Token benötigt** (siehe 2.3).
 
 1. Rolle `developer` in TaskTool anfordern. Ein Admin setzt sie unter `/admin/users` (siehe [admin-guide.md](./admin-guide.md#2-entwickler-onboarding)).
-2. Token unter `/dev/me/credentials` abholen. Der Klartext wird **nur einmal** angezeigt.
-3. Als Umgebungsvariable dauerhaft hinterlegen:
+2. Unter `/dev/onboarding` auf **Generate my tokens** klicken. Der Klartext wird **nur einmal** angezeigt — als fertiges Skript.
+3. Das Skript in PowerShell einfügen. Es setzt beide Variablen dauerhaft:
 
 ```powershell
-[Environment]::SetEnvironmentVariable("MEDIALINE_MCP_TOKEN", "mlmcp_...", "User")
+[Environment]::SetEnvironmentVariable("MEDIALINE_MCP_TOKEN",     "mlmcp_...",     "User")
+[Environment]::SetEnvironmentVariable("MEDIALINE_JENKINS_TOKEN", "mljenkins_...", "User")
 ```
 
 4. **VS Code vollständig beenden und neu starten.** Ein Reload des Fensters genügt nicht, da Umgebungsvariablen nur von neu gestarteten Prozessen übernommen werden.
 
 ### 2.3 Git-Anmeldung für Gitea
 
-Das Plugin wird per `git clone` von Gitea geholt. **Gitea verlangt dafür eine Anmeldung** — anonym lässt sich das Repository nicht klonen.
+Gitea verlangt für jeden Zugriff eine Anmeldung, auch für das Klonen des Plugins. Die Anmeldung ist die **eigene Medialine-Anmeldung (Entra ID)** — es gibt kein Gitea-Passwort und keinen Token, den man eintragen müsste.
 
-> **Wichtig:** Git liest die Umgebungsvariablen **nicht**. `MEDIALINE_MCP_TOKEN` und `MEDIALINE_GITEA_PAT` werden von den MCP-Servern benutzt, nicht von Git. Git holt Zugangsdaten nur aus der URL, aus dem Windows Credential Manager oder aus der `.gitconfig`.
+**So läuft es:**
 
-Fehlt die Anmeldung, scheitert das Hinzufügen des Marketplace mit:
-
-```text
-fatal: Cannot prompt because user interactivity has been disabled.
-fatal: unable to get password from user
-```
-
-Claude Code klont im Hintergrund und kann deshalb nicht nach einem Passwort fragen. Die Anmeldung muss **vorher** einmal eingerichtet werden.
-
-**Weg 1 — empfohlen: einmal von Hand anmelden.** In einem normalen Terminal:
+1. `https://gitea.medialine.com` öffnen und **Sign in with Medialine Entra ID** wählen. Beim ersten Mal entsteht dadurch das Gitea-Konto.
+2. Einem Admin Bescheid geben. Mit der Rolle `developer` nimmt TaskTool das Konto in die Organisation `medialine` auf. Vorher liefern Repositories `404 not found`.
+3. Einmal in einem normalen Terminal:
 
 ```powershell
 git ls-remote https://gitea.medialine.com/medialine/claude-plugin-platform.git
 ```
 
-Git fragt nach Benutzername und Passwort:
+Git für Windows bringt den **Git Credential Manager** mit. Er erkennt Gitea, **öffnet den Browser**, die Anmeldung läuft über Entra, und der Manager speichert das Ergebnis im Windows Credential Manager (Einträge `git:https://oauth2@gitea.medialine.com` und `git:https://refresh_token.gitea.medialine.com`). Ab dann funktionieren Klonen, Pull und Push aus jedem Programm ohne Rückfrage — auch aus Claude Code, das selbst keinen Browser öffnen kann.
 
-- **Benutzername:** der eigene Gitea-Benutzername
-- **Passwort:** der Gitea-PAT (derselbe Wert wie in `MEDIALINE_GITEA_PAT`)
+Erscheint eine Liste mit Zeilen, die auf `refs/heads/main` enden, ist alles bereit.
 
-Der Windows Credential Manager speichert das. Danach klappt das Hinzufügen des Marketplace ohne Rückfrage. Kein Token landet im Klartext in einer Datei.
+> **Wichtig:** Git liest **keine** Umgebungsvariablen. `MEDIALINE_MCP_TOKEN` und `MEDIALINE_JENKINS_TOKEN` sind für die MCP-Server und Jenkins da, nicht für Git.
 
-**Weg 2 — falls Weg 1 nicht funktioniert:** den PAT in die Git-Konfiguration eintragen:
+**Fragt Git nach Benutzername und Passwort statt den Browser zu öffnen?** Dann steht eine alte Einstellung im Weg:
 
 ```powershell
-git config --global http.https://gitea.medialine.com/.extraheader "Authorization: token <PAT>"
+git config --global --unset credential.https://gitea.medialine.com.provider
+git config --global --unset http.https://gitea.medialine.com/.extraheader
 ```
 
-> **Achtung:** Der Teil `https://gitea.medialine.com/` muss drinstehen. Ohne ihn schickt Git den Token an **jeden** Server, auch an GitHub. Außerdem steht der Token dann im Klartext in `%USERPROFILE%\.gitconfig`.
+Danach den `git ls-remote`-Befehl erneut ausführen. Ein Medialine-Passwort funktioniert an dieser Stelle **nie** — Gitea kennt es nicht.
+
+**macOS:** `brew install git git-credential-manager`. **Linux:** `git-credential-oauth` (Paket der Distribution oder <https://github.com/hickford/git-credential-oauth>); es ist in Gitea vorregistriert und arbeitet genauso über den Browser.
 
 **Prüfen**, ob die Anmeldung steht — diesmal ohne Rückfrage erlaubt:
 
@@ -94,7 +90,7 @@ $env:GIT_TERMINAL_PROMPT = "0"
 git ls-remote https://gitea.medialine.com/medialine/claude-plugin-platform.git
 ```
 
-Erscheint eine Liste mit Commit-Hashes, ist alles bereit. Erscheint `could not read Username`, fehlt die Anmeldung noch.
+Erscheint `could not read Username`, fehlt die Anmeldung noch (Schritt 3). Erscheint `not found`, fehlt die Aufnahme in die Organisation (Schritt 2).
 
 ---
 
@@ -267,7 +263,8 @@ Skills, Rules, Agents und Slash-Commands funktionieren. Die sechs MCP-Server ste
 | Symptom | Ursache | Abhilfe |
 |---|---|---|
 | Marketplace lässt sich nicht hinzufügen | Keine VPN-Verbindung | `nslookup gitea.medialine.com` prüfen |
-| `unable to get password from user` beim Hinzufügen | Git hat keine Anmeldung für Gitea. Umgebungsvariablen helfen hier nicht | Git-Anmeldung einrichten, siehe 2.3 |
+| `unable to get password from user` beim Hinzufügen | Git hat noch keine gespeicherte Gitea-Anmeldung. Umgebungsvariablen helfen hier nicht | Einmal `git ls-remote …` im Terminal, Browser-Anmeldung, siehe 2.3 |
+| Repository `not found`, obwohl angemeldet | Konto ist noch nicht in der Organisation `medialine` | Admin bittet um die Rolle `developer`, siehe 2.3 |
 | MCP-Server melden Fehler, OAuth-Meldung erscheint | `MEDIALINE_MCP_TOKEN` fehlt oder ist ungültig | Token setzen, VS Code **vollständig** neu starten |
 | Token gesetzt, dennoch Fehler | Variable ist im gestarteten Prozess nicht bekannt | Neue PowerShell über das Startmenü öffnen und `$env:MEDIALINE_MCP_TOKEN.Length` prüfen |
 | Neue Skills fehlen nach dem Update | Session hält den alten Stand | Fenster neu laden |
