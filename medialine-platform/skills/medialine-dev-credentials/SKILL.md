@@ -54,7 +54,7 @@ Tasktool stores only the sha256 hash of each token. Plaintext is shown ONCE at m
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | `could not read Username … terminal prompts disabled` when adding the marketplace | git has no saved Gitea login | run `git ls-remote …` in a normal terminal once (browser sign-in) |
-| git asks for username + password instead of opening the browser | an old `credential.https://gitea.medialine.com.provider = generic` or `http.….extraheader` setting | `git config --global --unset credential.https://gitea.medialine.com.provider` and `--unset http.https://gitea.medialine.com/.extraheader`, retry |
+| git asks for username + password instead of opening the browser, or succeeds without ever opening one | git reuses an old saved login (Windows Credential Manager entry `git:https://gitea.medialine.com`) or an old `http.….extraheader` token | `cmdkey /delete:LegacyGeneric:target=git:https://gitea.medialine.com` (macOS: delete the Keychain item) and `git config --global --unset http.https://gitea.medialine.com/.extraheader`, retry |
 | repository `not found` although signed in | account not yet in the `medialine` organisation | ask an admin for the developer role |
 | `401 missing_or_invalid_authorization_header` from `/mcp` | env var not set in the shell that launched Claude Code | set it, fully restart |
 | `401 invalid_or_revoked_token` | token revoked or never minted — check `/dev/onboarding` | regenerate |

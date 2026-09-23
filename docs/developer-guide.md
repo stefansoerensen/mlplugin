@@ -72,14 +72,14 @@ Erscheint eine Liste mit Zeilen, die auf `refs/heads/main` enden, ist alles bere
 
 > **Wichtig:** Git liest **keine** Umgebungsvariablen. `MEDIALINE_MCP_TOKEN` und `MEDIALINE_JENKINS_TOKEN` sind für die MCP-Server und Jenkins da, nicht für Git.
 
-**Fragt Git nach Benutzername und Passwort statt den Browser zu öffnen?** Dann steht eine alte Einstellung im Weg:
+**Fragt Git nach Benutzername und Passwort statt den Browser zu öffnen — oder „klappt" es, ohne dass je ein Browser aufging?** Dann verwendet Git eine alte gespeicherte Anmeldung oder einen alten Token weiter. Beides entfernen (eine Meldung „nicht gefunden" ist in Ordnung):
 
 ```powershell
-git config --global --unset credential.https://gitea.medialine.com.provider
+cmdkey /delete:LegacyGeneric:target=git:https://gitea.medialine.com
 git config --global --unset http.https://gitea.medialine.com/.extraheader
 ```
 
-Danach den `git ls-remote`-Befehl erneut ausführen. Ein Medialine-Passwort funktioniert an dieser Stelle **nie** — Gitea kennt es nicht.
+Danach den `git ls-remote`-Befehl erneut ausführen; jetzt öffnet sich der Browser. Ein Medialine-Passwort funktioniert an dieser Stelle **nie** — Gitea kennt es nicht. (macOS: statt der ersten Zeile den Eintrag „gitea.medialine.com" in der Schlüsselbundverwaltung löschen.)
 
 **macOS:** `brew install git git-credential-manager`. **Linux:** `git-credential-oauth` (Paket der Distribution oder <https://github.com/hickford/git-credential-oauth>); es ist in Gitea vorregistriert und arbeitet genauso über den Browser.
 
