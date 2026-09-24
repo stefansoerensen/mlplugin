@@ -121,6 +121,7 @@ diff -rq ~/.claude/plugins/marketplaces/medialine/medialine-platform \
 
 - Entwickler-Handbuch (DE): [docs/developer-guide.md](./docs/developer-guide.md)
 - Admin-Handbuch (DE): [docs/admin-guide.md](./docs/admin-guide.md)
+- Plan Produkttrennung (DE, zurückgestellt): [docs/plan-produkttrennung.md](./docs/plan-produkttrennung.md)
 - The rollout plan: `tasktool/.claude/plans/logical-toasting-dolphin.md`
 - Anthropic plugin docs: <https://code.claude.com/docs/en/plugins>
 - Marketplace docs: <https://code.claude.com/docs/en/plugin-marketplaces>
