@@ -20,7 +20,7 @@ feedback, chat/AI, login, file upload, search, notifications, deployment.
 |---|---|---|---|
 | **Pulse** | `medialine/pulse` | In-app feedback widget (floating button, form, screenshot capture) + admin backend to triage what users report | [`pulse-feedback`](../pulse-feedback/SKILL.md) |
 | **Assistant** | `medialine/assistant-service` | Platform AI assistant — one brain, every app. Floating ✨ launcher + ⌘-K spotlight that answers questions, looks up your app's records, and proposes actions the user confirms | [`ai-assistant`](../ai-assistant/SKILL.md) |
-| **Auth** | `medialine/auth-service` | TaskTool SSO, JWT issuance, dual-mode standalone login | [`auth-integration`](../auth-integration/SKILL.md) |
+| **Auth** | `medialine/auth-service` | TaskTool SSO: Entra login + RS256 platform JWT issuance. Apps only verify with the mounted public key — no app-side login | [`auth-integration`](../auth-integration/SKILL.md) |
 | **MinIO** | `medialine/infrastructure` | Shared S3-compatible object storage, per-app users + bucket policies | [`object-storage`](../object-storage/SKILL.md) |
 | **Vector service** | `medialine/vector-service` | Shared Milvus collections for RAG / semantic search | [`vector-search`](../vector-search/SKILL.md) |
 | **ext-api-service** | `medialine/ext-api-service` | Gateway to external APIs (companyai/Claude, Lusha, Handelsregister, …). Never call a vendor API directly from an app | — |

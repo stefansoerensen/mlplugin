@@ -11,7 +11,7 @@ This project lives on Gitea (`gitea.medialine.com`) with server-side branch prot
 - **Verify PR state before pushing a follow-up.** If you're about to push to an existing branch, confirm its PR is still open (`get_pull` / `gh pr view`) — if it's merged or closed, cut a new branch instead.
 - **Open a PR against `main`.** Wait for the Jenkins PR build to go green (`<repo>/pipeline/pr-main: success`).
 - **Squash-merge via the Gitea UI** (or `gh`/API). PR branches are auto-deleted after merge.
-- **Never push directly to `main`.** Gitea rejects it; a global PreToolUse hook in `~/.claude/settings.json` also blocks `git push origin main|master` from any Claude Code session.
+- **Never push directly to `main`.** Gitea rejects it; the plugin's `block-main-push` PreToolUse hook also blocks `git push` to `main`/`master` (including a bare `git push` while standing on `main`) from any Claude Code session.
 
 ## Why
 

@@ -34,6 +34,8 @@ medialine-platform/                ← the plugin
 │   └── security.md
 ├── scripts/                       ← hook implementations (invoked via CLAUDE_PLUGIN_ROOT)
 │   ├── block-host-installs.sh     ← PreToolUse: enforce cloud-only
+│   ├── block-hs256.sh             ← PreToolUse(Write/Edit): RS256-only platform auth
+│   ├── block-main-push.sh         ← PreToolUse: no direct push to main/master
 │   ├── docs-review-gate.sh        ← PreToolUse: doc-review reminder on commit
 │   └── platform-baseline-notice.sh ← SessionStart: flag unused platform services
 ├── agents/                        ← subagent definitions

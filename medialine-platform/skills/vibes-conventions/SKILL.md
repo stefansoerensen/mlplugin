@@ -49,11 +49,12 @@ project-root/
 │   │   ├── main.py              # FastAPI app, CORS, health endpoint, router includes
 │   │   ├── api/
 │   │   │   ├── __init__.py
-│   │   │   ├── deps.py          # get_db, get_current_user dependencies
+│   │   │   ├── deps.py          # get_db; re-exports get_current_user from core/auth.py
 │   │   │   └── {module}.py      # Route handlers per domain
 │   │   ├── core/
 │   │   │   ├── __init__.py
-│   │   │   ├── config.py        # Pydantic Settings class
+│   │   │   ├── config.py        # Pydantic Settings (incl. JWT_PUBLIC_KEY)
+│   │   │   ├── auth.py          # get_current_user: RS256-only platform JWT verification
 │   │   │   └── database.py      # SQLAlchemy engine, Base, SessionLocal
 │   │   ├── models/              # SQLAlchemy models (one file per entity)
 │   │   ├── schemas/             # Pydantic request/response schemas
@@ -61,7 +62,6 @@ project-root/
 │   ├── alembic/                 # Database migrations
 │   ├── tests/
 │   ├── Dockerfile
-│   ├── Dockerfile.dev           # Development with hot reload
 │   ├── entrypoint.sh
 │   └── requirements.txt
 ├── frontend/
@@ -72,35 +72,26 @@ project-root/
 │   │   ├── components/          # Reusable UI components
 │   │   ├── hooks/               # Custom hooks (useAuth, etc.)
 │   │   ├── services/
-│   │   │   └── api.ts           # Axios instance with auth interceptor
+│   │   │   └── api.ts           # Axios instance, ?token= handoff (tasktool_token)
 │   │   └── types/
 │   │       └── index.ts         # ALL TypeScript interfaces (centralized)
 │   ├── public/
 │   ├── Dockerfile
-│   ├── Dockerfile.dev
 │   ├── nginx.conf               # Production nginx for SPA
 │   ├── package.json
 │   ├── tsconfig.json
 │   └── vite.config.ts
-├── infrastructure/              # Local dev infrastructure
-│   ├── docker-compose.infra.yml
-│   ├── postgres/
-│   │   └── init.sql
-│   └── auth-mock/
-│       ├── Dockerfile
-│       └── server.py
 ├── docs/
 ├── scripts/
 ├── adr/                         # Architecture Decision Records
-├── .env.example                 # Dev defaults (working out of box)
+├── .env.example                 # Placeholder values only
 ├── .env.prod.example            # Production template
 ├── .gitignore
 ├── CLAUDE.md                    # AI context (CRITICAL)
 ├── Jenkinsfile                  # CI/CD pipeline
 ├── Makefile                     # Common commands
 ├── docker-compose.yml           # App services only
-├── docker-compose.dev.yml       # Self-contained (app + local infra)
-├── docker-compose.prod.yml      # Production (external medialine_network)
+├── docker-compose.prod.yml      # Production (medialine_network, jwt_public_key mount)
 └── README.md
 ```
 
@@ -143,16 +134,20 @@ project-root/
 - Indexes on frequently queried columns
 - Schema name = project slug with underscores (e.g., `expense_tracker`)
 
-## Authentication Pattern (Dual-Mode)
+## Authentication Pattern (RS256-only TaskTool SSO)
 
-Every app MUST support both authentication modes:
+There is one mode. The platform (auth-service / TaskTool) logs the user in and
+issues an RS256-signed platform JWT; the app only verifies it:
 
-1. **Standalone mode:** Own JWT login (username/password for dev, Entra ID for prod)
-2. **TaskTool SSO mode:** Token exchange from TaskTool platform
+1. The portal launches the app with `?token=<jwt>`; the frontend stores it as
+   `tasktool_token`, strips it from the URL, and sends it as `Authorization: Bearer`.
+2. The backend verifies with the platform **public key** (`JWT_PUBLIC_KEY` or
+   the mount `/run/secrets/jwt_public_key`), `algorithms=["RS256"]` only.
+   No key → 401 (fail closed).
+3. Tests use an ephemeral RSA keypair + a `sign_token` fixture.
 
-Dev users (always available):
-- `admin` / `Admin123!` (admin role)
-- `testuser` / `Test123!` (regular user)
+No local login, no dev users, no shared JWT secret, no HMAC algorithm, no
+auth-mock. Details and the "Never" list: [`auth-integration`](../auth-integration/SKILL.md).
 
 ## Port Convention
 

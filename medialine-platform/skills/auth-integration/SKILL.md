@@ -1,223 +1,278 @@
 ---
 name: auth-integration
-description: Authentication and SSO integration patterns for Medialine apps with TaskTool platform
+description: Authentication and SSO integration patterns for Medialine apps with TaskTool platform — RS256-only verification of platform JWTs with the mounted public key, fail closed
 user-invocable: false
 ---
 
-# Authentication Integration Patterns
+# Authentication Integration (RS256-only TaskTool SSO)
 
-Every Medialine app uses a dual-mode authentication system that works both standalone and through TaskTool SSO.
+Medialine apps do **not** log users in. The platform does: auth-service /
+TaskTool authenticate the user against Entra ID and issue a **platform JWT
+signed with RS256**. Every app only **verifies** that token with the platform
+**public key**. An app can check a token but can never mint one, so a
+compromised app cannot impersonate a user in any other app.
+
+This is the shape the TaskTool app skeleton generates. Copy it; do not invent
+a variant.
 
 ## Architecture
 
 ```
-Standalone Mode:
-  User → App Login Page → Local JWT → App Backend
+User → TaskTool portal (Entra ID login via auth-service)
+     → launches https://<slug>.tasktool.medialine.com/?token=<platform JWT>
+     → frontend stores it as `tasktool_token`, strips it from the URL
+     → every API call: Authorization: Bearer <token>
+     → backend verifies RS256 with /run/secrets/jwt_public_key → 200 or 401
 
-TaskTool SSO Mode:
-  User → TaskTool Login (Entra ID) → Launch App → Token Exchange → App JWT → App Backend
-
-Graph API Access:
-  App Backend → TaskTool /api/graph/* → Microsoft Graph API
+Graph API access:
+  App backend → TaskTool /api/graph/* (forwarding the user's token) → Microsoft Graph
 ```
 
-## Backend Auth Integration (FastAPI)
+There is exactly one mode. No local login, no dev users, no second algorithm.
 
-### Dependencies (deps.py)
+## Rules
+
+1. **RS256 only.** `algorithms=["RS256"]` — a list with exactly that one entry,
+   hardcoded. Never read the algorithm from config or from the token header.
+2. **Public key only.** From `JWT_PUBLIC_KEY` (PEM or file path) or the Docker
+   secret mount `/run/secrets/jwt_public_key`. Apps never hold a private key or
+   a shared secret.
+3. **Fail closed.** No key configured → every authenticated request gets 401.
+   Never "skip verification", never fall back to anything.
+4. **Signature is the trust anchor.** Do not branch on `iss` (or any other
+   claim) to pick a verification path. A token either verifies with the
+   platform key or it is rejected.
+5. **Identity, not authorization.** The token carries `sub`, `entra_id`,
+   `email`, `name`, `groups` (only `SG_` security groups), `exp`, `iat`,
+   `jti`. App roles (admin etc.) live in the app's own users table, looked up
+   by `entra_id` or `email`. Do not consume the legacy `is_admin` claim in new code.
+
+## Backend (FastAPI)
+
+### Settings — `app/core/config.py`
 
 ```python
+from pathlib import Path
 from typing import Optional
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    APP_SLUG: str = "my-app"
+    # RS256 public key: PEM content or a file path. In prod it's mounted at
+    # /run/secrets/jwt_public_key. Apps only ever get the PUBLIC key, so they
+    # can verify platform tokens but never forge them. No shared-secret fallback.
+    JWT_PUBLIC_KEY: Optional[str] = None
+
+    @property
+    def jwt_public_key_content(self) -> Optional[str]:
+        """Resolve the RS256 public key from env/PEM, file path, or Docker secret."""
+        val = self.JWT_PUBLIC_KEY
+        if val:
+            if val.startswith("/") or val.startswith("C:"):
+                p = Path(val)
+                return p.read_text().strip() if p.exists() else None
+            return val
+        secret = Path("/run/secrets/jwt_public_key")
+        if secret.exists():
+            return secret.read_text().strip()
+        return None
+
+
+settings = Settings()
+```
+
+### Auth dependency — `app/core/auth.py`
+
+```python
+"""TaskTool SSO dependency.
+
+Accepts the platform JWT as a Bearer header OR the `access_token` cookie.
+Verification is RS256 with the platform PUBLIC key. No fallback: a token
+without a valid platform signature is rejected.
+"""
+from fastapi import HTTPException, Request, status
 from jose import JWTError, jwt
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.database import get_db
 
-security = HTTPBearer(auto_error=False)
 
-async def get_current_user(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
-    db: AsyncSession = Depends(get_db)
-):
-    if not credentials:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+def _decode(token: str) -> dict:
+    # RS256 with the platform public key — the single trust anchor. No fallback.
+    pub = settings.jwt_public_key_content
+    if not pub:
+        raise JWTError("JWT public key not configured — cannot verify tokens")
+    return jwt.decode(token, pub, algorithms=["RS256"], options={"verify_aud": False})
 
+
+async def get_current_user(request: Request) -> dict:
+    token = None
+    auth = request.headers.get("Authorization", "")
+    if auth.startswith("Bearer "):
+        token = auth[7:]
+    if not token:
+        token = request.cookies.get("access_token")
+    if not token:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not authenticated")
     try:
-        payload = jwt.decode(
-            credentials.credentials,
-            settings.JWT_SECRET_KEY,
-            algorithms=["HS256"]
-        )
-
-        # Check token issuer
-        issuer = payload.get("iss", "")
-
-        if issuer == "tasktool":
-            # Token from TaskTool SSO — trust it
-            return await _get_or_create_user_from_tasktool(db, payload)
-        else:
-            # Local token — validate against local DB
-            return await _get_local_user(db, payload.get("sub"))
-
+        return _decode(token)
     except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid token")
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid or expired token")
 ```
 
-### Local Auth Endpoints (auth.py)
+Use `Depends(get_current_user)` on every protected route. If the app keeps a
+local users table (for app roles), upsert the row from the verified claims
+*after* `_decode` succeeded — never before, never instead.
+
+`/api/auth/me` just returns the verified claims (plus the app-local role):
 
 ```python
-from fastapi import APIRouter, Depends, HTTPException
-from jose import jwt
-from datetime import datetime, timedelta
-
-router = APIRouter(prefix="/api/auth", tags=["auth"])
-
-# Dev users — always available
-DEV_USERS = {
-    "admin": {"password": "Admin123!", "email": "admin@medialine.com", "is_admin": True},
-    "testuser": {"password": "Test123!", "email": "test@medialine.com", "is_admin": False},
-}
-
-@router.post("/login")
-async def login(username: str, password: str):
-    if settings.AUTH_MODE == "local":
-        user = DEV_USERS.get(username)
-        if user and user["password"] == password:
-            token = jwt.encode(
-                {"sub": username, "email": user["email"], "iss": settings.APP_SLUG,
-                 "exp": datetime.utcnow() + timedelta(hours=24)},
-                settings.JWT_SECRET_KEY, algorithm="HS256"
-            )
-            return {"access_token": token, "token_type": "bearer"}
-    raise HTTPException(status_code=401, detail="Invalid credentials")
-
-@router.get("/me")
-async def me(user = Depends(get_current_user)):
-    return {"email": user.email, "display_name": user.display_name, "is_admin": user.is_admin}
+@router.get("/api/auth/me")
+async def me(user: dict = Depends(get_current_user)) -> dict:
+    return {"sub": user["sub"], "email": user.get("email"), "name": user.get("name")}
 ```
 
-## Frontend Auth Integration (React)
+There is no `/api/auth/login` endpoint. Login happens at the portal.
 
-### Auth Hook (useAuth.tsx)
+## Frontend (React)
 
-```typescript
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
-import api from '../services/api';
-
-interface User {
-  id: string;
-  email: string;
-  display_name: string;
-  is_admin: boolean;
-  groups: string[];
-}
-
-interface AuthContextType {
-  user: User | null;
-  isLoading: boolean;
-  isTaskToolMode: boolean;
-  login: (username: string, password: string) => Promise<void>;
-  logout: () => void;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isTaskToolMode, setIsTaskToolMode] = useState(false);
-  const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    const token = searchParams.get('token');
-    if (token) {
-      // Launched from TaskTool
-      setIsTaskToolMode(true);
-      localStorage.setItem('auth_token', token);
-      navigate(window.location.pathname, { replace: true });
-    }
-    fetchUser();
-  }, []);
-
-  const fetchUser = async () => {
-    try {
-      const { data } = await api.get('/api/auth/me');
-      setUser(data);
-    } catch {
-      localStorage.removeItem('auth_token');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const login = async (username: string, password: string) => {
-    const { data } = await api.post('/api/auth/login', { username, password });
-    localStorage.setItem('auth_token', data.access_token);
-    await fetchUser();
-  };
-
-  const logout = () => {
-    localStorage.removeItem('auth_token');
-    setUser(null);
-    if (isTaskToolMode) {
-      window.location.href = import.meta.env.VITE_TASKTOOL_URL || 'http://localhost:5174';
-    }
-  };
-
-  return (
-    <AuthContext.Provider value={{ user, isLoading, isTaskToolMode, login, logout }}>
-      {children}
-    </AuthContext.Provider>
-  );
-}
-
-export const useAuth = () => {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
-  return ctx;
-};
-```
-
-### Axios Instance (api.ts)
+### Token handoff — `src/services/api.ts`
 
 ```typescript
-import axios from 'axios';
+import axios from 'axios'
 
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '',
-});
+// TaskTool SSO handoff: the portal launches this app with the platform JWT in
+// the URL (?token=...). Capture it once on load, persist it, and strip it from
+// the URL so it isn't left in history or copied into shared links. The
+// access_token cookie is NOT present on the app subdomain, so relying on it
+// alone leaves every portal launch unauthenticated.
+const TOKEN_KEY = 'tasktool_token'
 
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('auth_token');
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
-
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('auth_token');
-      window.location.href = '/login';
-    }
-    return Promise.reject(error);
+;(() => {
+  const params = new URLSearchParams(window.location.search)
+  const handoff = params.get('token')
+  if (handoff) {
+    localStorage.setItem(TOKEN_KEY, handoff)
+    params.delete('token')
+    const qs = params.toString()
+    window.history.replaceState(
+      {},
+      '',
+      window.location.pathname + (qs ? `?${qs}` : '') + window.location.hash,
+    )
   }
-);
+})()
 
-export default api;
+// Same-origin: nginx proxies /api/* to the backend.
+export const api = axios.create({
+  baseURL: '/api',
+  withCredentials: true,
+})
+
+// Send the handoff JWT as a Bearer header. The backend accepts Bearer OR the
+// access_token cookie (see get_current_user).
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem(TOKEN_KEY)
+  if (token) config.headers.set('Authorization', `Bearer ${token}`)
+  return config
+})
+
+export function getToken(): string | null {
+  return localStorage.getItem(TOKEN_KEY)
+}
 ```
 
-## Graph API Access (via TaskTool)
+On a 401 (expired/invalid token) clear `tasktool_token` and send the user back
+to the portal (`https://tasktool.medialine.com`) to relaunch the app. There is
+no local `/login` page to redirect to. Components that need the raw token
+(e.g. the assistant widget) read it via `getToken()`, not a different key.
 
-Apps access Microsoft Graph data through TaskTool's centralized proxy:
+## Production compose — `docker-compose.prod.yml`
+
+```yaml
+services:
+  backend:
+    environment:
+      APP_SLUG: my-app
+      # No shared JWT secret and no auth-mode switch: the platform issues
+      # tokens, the app only verifies them with the public key below.
+    volumes:
+      # Platform RS256 PUBLIC key. The private key stays on the signers
+      # (auth-service / tasktool).
+      - /opt/medialine/infrastructure/secrets/jwt_public_key.pem:/run/secrets/jwt_public_key:ro
+```
+
+Guard it in the app's Jenkinsfile convention-check stage:
+
+```bash
+grep -q 'jwt_public_key' docker-compose.prod.yml \
+  || { echo "FAIL: RS256 public key is not mounted"; exit 1; }
+# Only assignments (line start + colon), so explanatory comments don't trip it.
+! grep -qE '^[[:space:]]*(JWT_SECRET_KEY|AUTH_MODE):' docker-compose.prod.yml \
+  || { echo "FAIL: shared secret / auth mode in compose"; exit 1; }
+```
+
+## Tests — `backend/tests/conftest.py`
+
+Tests exercise the real RS256 path with an ephemeral keypair generated per run.
+Nothing is checked in, nothing is shared.
+
+```python
+import os
+
+import pytest
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
+
+# Throwaway keypair for the test run. The app verifies with JWT_PUBLIC_KEY; the
+# `sign_token` fixture mints tokens with the private half (as TaskTool would).
+# Set before Settings loads.
+_test_jwt_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+_test_jwt_private_pem = _test_jwt_key.private_bytes(
+    serialization.Encoding.PEM,
+    serialization.PrivateFormat.PKCS8,
+    serialization.NoEncryption(),
+).decode()
+os.environ.setdefault(
+    "JWT_PUBLIC_KEY",
+    _test_jwt_key.public_key()
+    .public_bytes(
+        serialization.Encoding.PEM,
+        serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+    .decode(),
+)
+
+
+@pytest.fixture
+def sign_token():
+    """Mint an RS256 platform SSO token for tests (as TaskTool would)."""
+    from jose import jwt
+
+    def _sign(claims: dict) -> str:
+        return jwt.encode(claims, _test_jwt_private_pem, algorithm="RS256")
+
+    return _sign
+```
+
+Worth having in every app: a test that a token signed with a *different* RSA
+key is rejected, and one that a missing public key yields 401 (fail closed).
+If you also assert that an HMAC-signed token is rejected, that test line needs
+the marker `# rs256-guard: allow` — the plugin's write hook blocks HMAC JWT
+patterns in code otherwise.
+
+## Graph API access (via TaskTool)
+
+Apps access Microsoft Graph through TaskTool's proxy, forwarding the user's
+platform token:
 
 ```python
 import httpx
 from app.core.config import settings
+
 
 class GraphClient:
     def __init__(self, user_token: str):
@@ -229,28 +284,53 @@ class GraphClient:
         async with httpx.AsyncClient() as client:
             resp = await client.get(url, headers=self.headers)
             return resp.json() if resp.status_code == 200 else None
-
-    async def get_photo(self, email: str | None = None) -> str | None:
-        url = f"{self.base_url}/me/photo" if not email else f"{self.base_url}/user/{email}/photo"
-        async with httpx.AsyncClient() as client:
-            resp = await client.get(url, headers=self.headers)
-            return resp.json().get("photo") if resp.status_code == 200 else None
 ```
 
-## Environment Variables
+## Environment variables
 
 ```bash
-# Auth configuration
-AUTH_MODE=local                    # local | entra
-JWT_SECRET_KEY=dev-secret-key-minimum-32-characters-long
-APP_SLUG=my-app                   # Used as JWT issuer
-
-# TaskTool integration
-TASKTOOL_API_URL=http://localhost:8004
-TASKTOOL_APP_SLUG=my-app
-
-# Entra ID (production only)
-ENTRA_TENANT_ID=
-ENTRA_CLIENT_ID=
-ENTRA_CLIENT_SECRET=
+APP_SLUG=my-app
+# Optional override; normally unset in prod (key comes from the secret mount).
+# JWT_PUBLIC_KEY=/run/secrets/jwt_public_key
+TASKTOOL_API_URL=http://tasktool-backend:8000
 ```
+
+## Never
+
+These are the patterns the old "dual-mode" skill taught. Every one of them is a
+finding in review, and the code/config ones are blocked by the plugin's
+`block-hs256` write hook:
+
+- **HS256 / HS384 / HS512** (any HMAC algorithm) for platform tokens — to decode *or* to mint.
+- **`JWT_SECRET_KEY` / `jwt_secret_key`** in app code, `.env*`, compose, Jenkinsfile or Docker secrets.
+- The **`dev-secret-key-…` dummy string** or any other default/fallback secret.
+- **Shared secrets** between apps and the platform, of any name.
+- **Algorithm fallback**: a second entry in `algorithms=[...]`, algorithm from
+  config, "RS256 if key present else …", or reading `alg` from the token header.
+- **`verify_signature: False`** (or `jwt.get_unverified_claims`) for authentication.
+- **Local password login / hardcoded dev users** (`DEV_USERS`, admin/test accounts),
+  an `/api/auth/login` endpoint, an auth-mode switch (`AUTH_MODE=local`).
+- **auth-mock** services or a `docker-compose.dev.yml` auth stack — development is cloud-only.
+- **Trusting a claim** (`iss == "tasktool"`, `is_admin`) instead of the signature.
+- A local **`/login` redirect** or a token key other than `tasktool_token`.
+
+## Migrating an old app
+
+Older apps (and older copies of this skill) have a dual-mode setup. To migrate:
+
+1. **Backend:** replace the decode with `_decode` above. Delete the HMAC branch,
+   the shared-secret setting, the issuer switch, the dev-user dict and the
+   local login endpoint — delete, don't keep "for dev".
+2. **Compose / infra:** remove the shared-secret env var and any
+   `jwt_secret_key` Docker secret from `docker-compose.prod.yml`; add the
+   `jwt_public_key.pem` mount. Remove the auth-mode env var.
+3. **Frontend:** switch to the `?token=` handoff with `tasktool_token`; delete the
+   login page, the login form and the `/login` redirect.
+4. **Tests:** replace fixtures that minted HMAC tokens with the ephemeral RSA
+   keypair + `sign_token` fixture.
+5. **Jenkinsfile:** remove any test-secret env var; add the compose guard above.
+6. **App-minted sessions:** only if the app *genuinely* issues its own
+   sessions (not platform identity — e.g. a device or kiosk token), it may have
+   its own per-app secret for that, stored as an app-specific secret, never
+   named like the platform one, never accepted by `get_current_user`, and never
+   shared with any other service. If you are unsure, it doesn't.

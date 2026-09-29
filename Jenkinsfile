@@ -84,7 +84,56 @@ import json
 h = json.load(open('medialine-platform/hooks/hooks.json'))
 assert h.get('hooks'), 'hooks.json missing hooks key'
 print('hooks.json OK: %s event(s)' % len(h['hooks']))
+
+# Every script under scripts/ must be registered, and every registered script
+# must exist. block-main-push.sh sat unregistered for a release while the rule
+# claimed it was enforced.
+import os, re
+raw = open('medialine-platform/hooks/hooks.json').read()
+referenced = set(re.findall(r'scripts/([A-Za-z0-9_.-]+[.]sh)', raw))
+present = set(f for f in os.listdir('medialine-platform/scripts') if f.endswith('.sh'))
+missing = sorted(referenced - present)
+unregistered = sorted(present - referenced)
+assert not missing, 'hooks.json references missing script(s): %s' % missing
+assert not unregistered, 'script(s) not registered in hooks.json: %s' % unregistered
+print('hook scripts OK: %s registered' % len(present))
 "
+                    for f in medialine-platform/scripts/*.sh; do bash -n "$f"; done
+                '''
+            }
+        }
+
+        stage('Content lint: RS256-only auth') {
+            steps {
+                sh '''
+                    set -e
+                    # The plugin must never TEACH shared-secret / HMAC platform auth
+                    # again (auth-integration used to show it as the default). These
+                    # patterns only occur in working code/config, so "Never" lists
+                    # that NAME the forbidden things (HMAC algorithms, the shared secret) in
+                    # prose do not match. The write hook is excluded: it has to
+                    # carry the patterns (and assembles them from pieces anyway).
+                    # No backslashes/quotes here on purpose (Groovy string): the
+                    # "." after "[" / "=" stands for the quote character.
+                    HITS=$(grep -rnE \
+                        -e 'algorithms=[[].HS' \
+                        -e 'algorithm=.HS' \
+                        -e 'JWT_SECRET''_KEY[[:space:]]*[=:]' \
+                        -e 'dev-secret-key-min''imum' \
+                        -e 'Admin123!' \
+                        -e 'Test123!' \
+                        -e 'DEV_USERS[[:space:]]*=' \
+                        --exclude=block-hs256.sh \
+                        medialine-platform/ || true)
+                    if [ -n "$HITS" ]; then
+                        echo "FAIL: plugin content teaches shared-secret / HMAC auth or dev logins:"
+                        echo "$HITS" | sed "s/^/  /"
+                        echo ""
+                        echo "Platform JWTs are RS256 with the mounted public key only."
+                        echo "See medialine-platform/skills/auth-integration/SKILL.md."
+                        exit 1
+                    fi
+                    echo "RS256-only content lint OK"
                 '''
             }
         }

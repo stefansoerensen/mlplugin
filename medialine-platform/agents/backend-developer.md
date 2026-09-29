@@ -6,7 +6,6 @@ model: sonnet
 maxTurns: 30
 skills:
   - vibes-conventions
-  - docker-patterns
   - auth-integration
 ---
 

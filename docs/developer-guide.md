@@ -199,7 +199,7 @@ Außer der Markierung `.in_use` darf nichts abweichen.
 |---|---|
 | `platform-services` | **Übersicht aller gemeinsamen Dienste.** Einstiegspunkt bei neuen Apps und neuen Features. |
 | `vibes-conventions` | VIBES v3: Projektstruktur, Namensgebung, Standards. |
-| `auth-integration` | TaskTool-SSO und JWT-Anbindung. |
+| `auth-integration` | TaskTool-SSO: Plattform-JWT nur per RS256 mit dem gemounteten Public Key prüfen, kein lokaler Login. |
 | `pulse-feedback` | Feedback-Widget einbinden und App in Pulse registrieren. |
 | `ai-assistant` | Plattform-KI-Assistent einbinden: Widget, Manifest, Tool-Callbacks. |
 | `object-storage` | Gemeinsames MinIO nutzen. |
@@ -220,6 +220,8 @@ Der `reviewer` prüft ein Projekt gegen sämtliche Konventionen und meldet Abwei
 | Hook | Auslöser | Verhalten |
 |---|---|---|
 | `block-host-installs` | `pip install`, `npm install` und Ähnliches | **Blockiert.** Abhängigkeiten gehören in `requirements.txt` beziehungsweise `package.json`. |
+| `block-main-push` | `git push` auf `main`/`master` (auch ein bloßes `git push`, während `main` ausgecheckt ist) | **Blockiert.** Änderungen laufen über einen Feature-Branch und einen PR. |
+| `block-hs256` | Write/Edit einer Code- oder Konfigurationsdatei (`.py`, `.ts`, `.yml`, `.env*`, `Jenkinsfile`, `Dockerfile` …) mit HMAC-JWT-Mustern (`HS256`, `JWT_SECRET_KEY`, Dummy-Secret) | **Blockiert.** Plattform-JWTs werden nur per RS256 mit dem gemounteten Public Key geprüft, siehe `auth-integration`. Markdown wird nicht geprüft. Bewusster Negativtest: Marker `rs256-guard: allow` in der Zeile. |
 | `docs-review-gate` | `git commit` mit Code-, aber ohne Doku-Änderungen | **Erinnert**, blockiert nicht. Unterdrückung über die Zeile `Docs-Reviewed: none-needed` in der Commit-Nachricht. |
 | `platform-baseline-notice` | Session-Start | Weist einmalig darauf hin, welche Plattformdienste die App noch nicht nutzt. |
 
@@ -273,6 +275,7 @@ Skills, Rules, Agents und Slash-Commands funktionieren. Die sechs MCP-Server ste
 | Plugin erscheint mehrfach | Ein Eintrag pro Scope | Kein Fehler, siehe 3.3 |
 | Änderung ist gemergt, wirkt aber nicht | Version wurde nicht erhöht | Beim DRI melden, siehe [admin-guide.md](./admin-guide.md#4-release-und-versionierung) |
 | `pip install` wird abgewiesen | `cloud-only`-Hook | Abhängigkeit eintragen, committen, pushen |
+| Schreiben einer Datei wird mit „RS256-only" abgewiesen | `block-hs256`-Hook: der Inhalt enthält ein Shared-Secret-/HMAC-Muster | Fallback löschen statt umschreiben, siehe `auth-integration` → „Migrating an old app" |
 
 ---
 
