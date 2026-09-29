@@ -13,6 +13,7 @@ paths:
 - Non-root `USER` in all production Dockerfiles
 - CORS: explicit allowed origins list in production, never `["*"]`
 - JWT tokens: always set expiration, validate on every request
+- Platform JWTs: RS256 with the mounted public key only; no shared secret, no algorithm fallback, fail closed. See [`auth-integration`](../skills/auth-integration/SKILL.md)
 - File uploads: validate file type and size, never trust client-provided filenames
 - Rate limiting on authentication endpoints
 - Never log sensitive data (passwords, tokens, API keys)

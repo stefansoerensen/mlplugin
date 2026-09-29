@@ -69,7 +69,7 @@ const ASSISTANT_API_URL =
   'https://assistant.tasktool.medialine.com';
 
 // inside the layout component
-const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+const token = typeof window !== 'undefined' ? localStorage.getItem('tasktool_token') : null; // SSO handoff key, see auth-integration
 
 {user && token && (
   <AssistantWrapper

@@ -13,7 +13,7 @@ private version of a shared service is a convention violation.
 
 Every new user-facing app ships all four of these before it is considered done:
 
-1. **TaskTool SSO** — dual-mode auth via auth-service. → [`auth-integration`](../skills/auth-integration/SKILL.md)
+1. **TaskTool SSO** — RS256-only verification of the platform JWT with the mounted public key; no local login. → [`auth-integration`](../skills/auth-integration/SKILL.md)
 2. **Pulse feedback widget** — mounted at app root, app registered in Pulse. → [`pulse-feedback`](../skills/pulse-feedback/SKILL.md)
 3. **Platform AI assistant** — widget mounted plus an `/api/assistant-tools/manifest`
    carrying at minimum a real glossary. Ships gated off; tools and actions grow

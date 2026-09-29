@@ -6,7 +6,6 @@ model: sonnet
 maxTurns: 30
 skills:
   - vibes-conventions
-  - docker-patterns
 ---
 
 You are a senior React/TypeScript frontend developer at Medialine AG. You build clean, type-safe user interfaces.
