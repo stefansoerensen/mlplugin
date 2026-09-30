@@ -10,11 +10,11 @@ Every Medialine app that needs file storage uses the **shared platform MinIO**
 container `shared-minio`. **Never run a private MinIO container** — apps are
 isolated by per-app users + bucket-scoped policies, not by separate instances.
 
-The container is defined in `infrastructure/docker-compose.prod.yml` (prod) and
-`infrastructure/docker-compose.yml` (dev), reachable on the external Docker
-network `medialine_network` at `shared-minio:9000`. Authoritative how-to with
-the full background lives in
-[`infrastructure/docs/SHARED-MINIO-INTEGRATION.md`](https://gitea.medialine.com/medialine/infrastructure/src/branch/main/docs/SHARED-MINIO-INTEGRATION.md).
+It is reachable on the external Docker network `medialine_network` at
+`shared-minio:9000`. The container itself is defined and operated by the
+platform — an app never starts, configures or upgrades it.
+
+This skill is self-contained: everything an app needs is below.
 
 ## When to use this skill
 
@@ -27,23 +27,32 @@ If the app does not store binary files, skip MinIO entirely.
 
 ## Step-by-step integration
 
-### 1. Get a bucket and credentials provisioned
+### 1. Request a bucket and credentials
 
-Add an entry to `infrastructure/minio/buckets.yaml` and re-run
-`infrastructure/minio/bootstrap.sh` on the prod host (idempotent):
+**This is a platform task, not an app task.** Provisioning runs against the
+platform's own repository and the prod host, which an app developer cannot
+reach. Ask a platform admin and state:
 
-```yaml
-apps:
-  - app: <this-app-slug>
-    bucket: <this-app-slug>-data       # lowercase + hyphens, no underscores
-    versioning: true                   # true for prod data, false for cache/ephemeral
-```
+- the **app slug**
+- whether the data is **permanent** (versioning on) or **cache/ephemeral** (off)
 
-Bootstrap creates:
-- bucket `<slug>-data`
-- MinIO user `<slug_with_underscores>_app`
-- bucket-scoped `s3:*` policy (the user can ONLY touch its own bucket)
-- per-app secret file `infrastructure/secrets/<slug>_minio_secret.txt`
+What you get back:
+
+| | |
+|---|---|
+| Bucket | `<slug>-data` |
+| MinIO user | `<slug_with_underscores>_app` |
+| Policy | bucket-scoped `s3:*` — the user can ONLY touch its own bucket |
+| Secret | a per-app secret file on the prod host, path given to you with the credentials |
+
+You can derive the bucket and user name yourself from the slug; only the secret
+has to be handed over.
+
+> **Known gap.** Provisioning is a file change plus a script run today, so it
+> cannot be self-service. The vector service solves the same problem properly —
+> an app creates its own collection through an API call. Object storage needs
+> the same, and until it has it, every new bucket costs a request. Tracked as a
+> platform task; do not work around it by starting a private MinIO.
 
 ### 2. Wire the four env vars + secret into compose
 
@@ -65,6 +74,9 @@ secrets:
   <slug>_minio_secret:
     file: /opt/medialine/infrastructure/secrets/<slug>_minio_secret.txt
 ```
+
+The secret path on the prod host is handed to you together with the
+credentials — it is not something you create.
 
 **Dev (`docker-compose.yml`):** plain env vars, MINIO_SECRET_KEY from local `.env`:
 ```yaml
@@ -95,7 +107,7 @@ fi
 ### 4. Use the SDK in Python
 
 Add `minio>=7.2.0` to `requirements.txt` and rebuild the container — never
-`pip install` on the host (Docker-First rule).
+`pip install` on the host (cloud-only rule).
 
 ```python
 # backend/app/core/config.py
@@ -131,8 +143,8 @@ async def put_bytes(key: str, data: bytes, content_type: str) -> str:
     s = get_settings()
     client = get_client()
     if not client.bucket_exists(s.minio_bucket):
-        # Should never happen — bootstrap.sh creates the bucket. Surface clearly.
-        raise RuntimeError(f"bucket {s.minio_bucket} missing — re-run minio/bootstrap.sh")
+        # Should never happen — the bucket is provisioned before the app runs.
+        raise RuntimeError(f"bucket {s.minio_bucket} missing — ask the platform to provision it")
     client.put_object(s.minio_bucket, key, io.BytesIO(data), len(data), content_type=content_type)
     return key
 
@@ -147,8 +159,7 @@ async def presigned_get(key: str, expires=timedelta(hours=1)) -> str:
 ### 5. Add the `/storage/` nginx route
 
 When the backend hands out presigned URLs that start with `/storage/...`, the
-platform nginx must proxy that path to MinIO. Mirror the pattern from
-`infrastructure/nginx/apps.d/pulse.conf`:
+platform nginx must proxy that path to MinIO:
 
 ```nginx
 location /storage/ {
@@ -198,8 +209,8 @@ isolation guarantee.
 
 ## Operational facts (already wired, no app-side action needed)
 
-- **Backups** — daily per-bucket `tar.gz` to `/backups/minio/<bucket>_<ts>.tar.gz`,
-  14 generations retained. Driven by `infrastructure/backup/backup.sh`.
+- **Backups** — daily per-bucket `tar.gz`, 14 generations retained. Run by the
+  platform; nothing to configure in the app.
 - **Metrics** — Prometheus scrapes `shared-minio:9000/minio/v2/metrics/cluster`;
   per-bucket size + request rate + error rate land in Grafana.
 - **Health** — TaskTool's admin monitoring grid checks
@@ -209,9 +220,9 @@ isolation guarantee.
 
 - ❌ Don't add a `minio:` service to the app's compose — there's only one shared instance.
 - ❌ Don't reuse another app's credential — each app has its own bucket-scoped user.
-- ❌ Don't create buckets/users via the MinIO console — the manifest at
-      `infrastructure/minio/buckets.yaml` is the source of truth.
-- ❌ Don't commit `infrastructure/secrets/*_minio_secret.txt` — gitignored.
+- ❌ Don't create buckets or users via the MinIO console — the platform's own
+      manifest is the source of truth. Request the change instead.
+- ❌ Don't commit the secret file or paste its contents into the repo.
 - ❌ Don't expose port 9001 (admin console) on prod.
 - ❌ Don't put the MinIO root password into any app — apps only see their
       per-app credential, never the root.
