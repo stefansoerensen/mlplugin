@@ -1,181 +1,165 @@
-# Plan: Trennung des Plugins für TaskTool als Produkt
+# Migrationsplanung: Plugin-Trennung für TaskTool als Produkt
 
-> **Status:** Zurückgestellt. **Blockiert durch:** die Entscheidung über den Produktnamen.
-> Nichts aus diesem Plan wird umgesetzt, bevor der Name feststeht — er bestimmt die
-> Plugin-Namen, die MCP-Server-Namen und die Verzeichnisstruktur.
+> **Stand:** 29.09.2026 · **Plugin-Version:** 1.8.0
+> **Backlog-Bezug:** `s41` (Plugin aufteilen) · `s39` (Auslieferungsmodell) · `s40` (Grenzregel) · `s38` (Forge-Settings) · `s37` (Core-Sperre) · `s01`/`s02` (Plattformagnostik)
 >
-> **Stand:** September 2026 · **Ausgangsversion:** `medialine-platform` 1.7.5
+> Ersetzt die erste Fassung vom 24.09. Die damalige Analyse gilt weiter; neu ist die
+> Einordnung in den Backlog und in den GitLab-Cutover.
 
 ---
 
-## 1. Warum
+## 1. Was es an Plänen schon gibt
 
-TaskTool wird ein Produkt, das an Kunden ausgeliefert wird. Die Repositories werden
-getrennt: TaskTool-Core auf der einen Seite, die Medialine-eigenen Apps auf der
-anderen. Das Plugin muss diese Trennung nachvollziehen.
+| Quelle | Inhalt | Bezug zum Plugin |
+|---|---|---|
+| Backlog `s41` | „Plugin aufteilen: generischer Produktteil vs. Overlay" | **Der Auftrag selbst.** Status `inbox`, Vorschlag `backlog` |
+| Backlog `s39` | Auslieferungsmodell (Repo / Stack / SaaS / OEM) | Blockiert `s41`. Hängt seinerseits an `s20` (K8s) |
+| Backlog `s40` | Grenzregel: alles zwischen Produkt und Kundenrepo über Artefakte | Blockiert `s41`. **Einzige Entscheidung, die ohne `s20` fallen kann** |
+| Backlog `s38` | Org-/Repo-Referenzen zentralisieren, Forge-Settings im Admin | Deckungsgleich mit der Parametrisierung des Plugins |
+| Backlog `s37` + 12 Schritte | Core-Repos für Developer sperren | Trifft das Plugin unmittelbar, siehe Abschnitt 4 |
+| Artefakt „Gitea to GitLab" | Host-Wechsel, 7 Phasen | Phase 5 hat das Plugin als **Gate** |
+| `core-plugin-platform` | `claude-plugin-platform` bleibt in `medialine` | **Entschieden.** Kein Repo-Umzug nötig |
 
-Ziel sind zwei voneinander unabhängige Plugins:
+## 2. Die Abhängigkeitskette
 
-- eines für **Entwickler beim Kunden**, die Apps auf TaskTool bauen,
-- eines für **Plattform-Entwickler**, die TaskTool selbst bauen.
+```
+s20 (K8s-Grundsatz)  ──►  s39 (Auslieferungsmodell)  ──┐
+                                                        ├──►  s41 (Plugin-Schnitt)
+s40 (Grenzregel Artefakte)  ─────────────────────────── ┘
+```
 
-Der Mehrwert des Produkts ist die durchgängige Plattform — von der Idee über das
-Vibecoding und den Betrieb bis zum End of Life einer App. Das Plugin ist damit
-**Teil des Produkts**, nicht Beiwerk: Es ist der Vibecoding-Anteil dieser Kette.
+**Der Schnitt ist doppelt blockiert.** Das deckt sich mit der Einschätzung in `s41`
+selbst („Der Schnitt lässt sich erst ziehen, wenn das Auslieferungsmodell steht")
+und mit dem Vorschlag, den Eintrag auf `backlog` zu setzen.
 
----
+Daraus folgt aber **nicht**, dass bis dahin nichts zu tun ist. Es gibt Vorarbeit,
+die von keiner dieser Entscheidungen abhängt und den späteren Schnitt billig macht.
+Abschnitt 5 listet sie.
 
-## 2. Gesicherte Annahmen
+## 3. Befund: zwei Umbenennungen auf Kollisionskurs
 
-Bestätigt am 24.09.2026:
+Zwei laufende Vorhaben benennen dieselben Dinge um:
 
-1. TaskTool wird beim Kunden betrieben, als eigene Instanz. Medialine betreibt
-   selbst eine Instanz des Produkts.
-2. Zum ausgelieferten Umfang gehören auch Pulse, Assistant-Service,
-   ext-api-service, cicd-service, vector-service, MinIO und die sechs MCP-Server —
-   nicht nur das Portal.
-3. Kunden bauen mit eigenen Entwicklern eigene Apps auf TaskTool.
-4. Jenkins beziehungsweise cicd-service ist Teil des Produkts.
-5. Der vorgeschriebene Stack (FastAPI, React, Postgres) ist **zunächst Teil des
-   Produkts**. Er soll später konfigurierbar werden.
-6. Das Port-Register gehört zum Produkt, weil TaskTool die Plattform für den
-   Betrieb der Apps ist.
-7. VIBES ist **teilweise** Produkt und teilweise Medialine-Hausstil. Die Grenze
-   ist noch nicht gezogen.
-8. Der Plugin-Feedback-Loop (`propose_update`) gehört **ins Produkt**. Sowohl das
-   interne Produkt-Plugin als auch das Kunden-Plugin werden laufend verbessert,
-   und beide brauchen den Rückkanal.
+| Vorhaben | Umbenennung |
+|---|---|
+| GitLab-Cutover, Phase 5 | `medialine-gitea` → `medialine-gitlab` (MCP-Server, nginx-Slug, Plugin-Registrierung) |
+| Produktschnitt `s41` | `medialine-*` → produktneutrale Namen |
 
-### Zuordnung der Repositories
+Beide ändern **Werkzeugnamen**. Jede Berechtigungsliste in `.claude/settings.json`
+zeigt danach ins Leere — in allen angebundenen Repos, für alle Entwickler, gleichzeitig.
 
-- **Core:** `tasktool`, `auth-service`, `ext-api-service`, `cicd-service`,
-  `assistant-service`, `pulse`, `docai-service`, `infrastructure`, `mcp-servers`,
-  `shared`
-- **Apps:** `leads-united`, `klar`, `aboabrechnung`, `mietkalkulator`,
-  `quote-parser`, `dkv-analyser`, `cccalculator`, `winline-dict-mcp` und weitere
+**Empfehlung: in einem Ereignis bündeln.** Zweimal denselben Bruch auszulösen kostet
+doppelt und verdoppelt das Risiko, dass Sessions danach stillschweigend Falsches tun.
+Wenn der GitLab-Cutover zuerst kommt, sollte er die Server gleich produktneutral
+benennen, statt `gitea` durch `gitlab` zu ersetzen.
 
----
+## 4. Befund: die Core-Sperre bricht Plugin-Verweise
 
-## 3. Die zentrale Erkenntnis
+Nach `s37` sehen Developer die Core-Repos nicht mehr. Das Plugin verweist heute an
+**vier Stellen** dorthin:
 
-**Das ist keine Inhaltstrennung, sondern eine Parametrisierung.**
+| Datei | Verweis |
+|---|---|
+| `skills/platform-services/SKILL.md` | `infrastructure`, `cicd-service`, `auth-service`, `tasktool` |
+| `skills/object-storage/SKILL.md` | `infrastructure` (MinIO-Doku) |
+| `skills/auth-integration/SKILL.md` | `auth-service` |
+| `agents/integrator.md` | `infrastructure` |
 
-Die ursprüngliche Vermutung war, Inhalte in zwei Töpfe zu sortieren: generisch
-gegen Medialine-spezifisch. Nachdem Stack, Port-Register und ein Teil von VIBES
-dem Produkt zugeordnet sind, bleibt bei „Medialine-spezifisch" **fast kein Inhalt**
-übrig.
+`infrastructure` allein kommt fünfmal vor. Für Developer laufen diese Links nach der
+Sperre auf `404` — genau die Fehlermeldung, die im Onboarding „der Admin hat dich
+noch nicht hinzugefügt" bedeutet. Das wird zu Fehlmeldungen führen.
 
-Was übrig bleibt, sind Konfigurationswerte:
+Der Backlog kennt den verwandten Fall bereits (`core-shared-api-doc`: die shared-API
+muss ins Plugin, weil Developer den Code danach nicht mehr lesen können). Die vier
+Verweise oben stehen dort noch nicht.
 
-- Hostnamen (`tasktool.medialine.com`, `gitea.medialine.com`)
-- die konkret belegten Ports
-- die Anbindung an Entra ID
-- Beispiele aus Winline, Boomi und MLAG
+**Aufgabe:** Vor oder mit dem Transfer entweder die Verweise entfernen, oder als
+„nur für Plattform-Entwickler" kennzeichnen, damit klar ist, dass ein 404 dort
+erwartet ist.
 
-Der Inhalt bleibt also weitgehend, wo er ist. Er muss nur aufhören, Medialine fest
-zu verdrahten. Erst danach ist der Schnitt im Wesentlichen ein Verschieben von
-Dateien.
+## 5. Vorarbeit, die nicht blockiert ist
 
-### Beispiel Port-Register
+Drei Pakete. Alle drei sind rückwärtskompatibel, einzeln lieferbar und machen den
+späteren Schnitt zu einem Verschieben von Dateien.
 
-Der Skill `port-allocation` enthält heute eine statische Tabelle belegter Ports.
-TaskTool hat dafür aber bereits einen Registry-MCP-Server mit `list_ports` und
-`get_next_available_port`. Die Tabelle ist also nicht das Produkt, sondern eine
-veraltete Kopie dessen, was die Instanz ohnehin weiß.
+### V1 — Parametrisierung (deckt sich mit `s38`)
 
-Für einen Kunden muss der Skill die Registry **abfragen**, statt eine Liste zu
-zeigen. Dasselbe Muster ist an weiteren Stellen zu erwarten.
+Fest verdrahtete Werte aus dem Plugin entfernen:
 
----
+- MCP-URLs auf `https://${TASKTOOL_HOST}/mcp/...`. Plugin-Manifeste unterstützen
+  Umgebungsvariablen in `url` und `headers`.
+- Hostnamen in den Skills durch Platzhalter, mit dem Medialine-Wert als Beispiel.
+- `port-allocation` auf die Registry umstellen statt auf die statische Tabelle —
+  TaskTool bietet `list_ports` und `get_next_available_port` bereits an.
+- Org-Referenzen (`medialine/...`) durch die Variablen aus `s38` ersetzen:
+  `app_org`, `core_org`, `plugin_repo`.
 
-## 4. Phasen
+`s38` ist für „nach dem Transfer" vorgesehen, damit sich nicht Repos und Referenzen
+gleichzeitig bewegen. Der Plugin-Anteil kann davon abweichen: Das Plugin zieht nicht
+um, es referenziert nur.
 
-### Phase 0 — Klären, was nicht am Plugin hängt
+### V2 — Folgen der Core-Sperre
 
-Zwei Punkte blockieren spätere Phasen und sind keine Plugin-Arbeit:
+- Die vier Verweise aus Abschnitt 4 bereinigen.
+- `core-shared-api-doc` umsetzen: shared-API (auth_middleware, logging_config,
+  health) im Skill `auth-integration` beschreiben.
 
-- **Deployment-Modell.** Offen, ob der Kunde einen kompletten Stack auf einen
-  Docker-Host deployed, ob Docker mitgeliefert wird, oder ob es Kubernetes wird.
-  Davon hängt ab, was in `cloud-only` und `jenkins-pipeline` stehen kann. Solange
-  das offen ist, werden diese beiden Skills **nicht** generisch umgeschrieben —
-  sonst zweimal.
-- **VIBES aufteilen.** Jemand muss die 179 Zeilen durchgehen und markieren, was
-  Produkt ist und was Hausstil. Inhaltliche Entscheidung, Ergebnis ist eine Liste.
+Terminlich gebunden an `s37` Schritt 3, nicht an den Produktschnitt.
 
-### Phase 1 — Parametrisieren, ohne zu trennen
+### V3 — Inventar Produkt gegen Overlay
 
-Das Plugin bleibt eins. Nur die fest verdrahteten Werte verschwinden.
+Jede Datei einmal klassifizieren: Produkt, Overlay oder gemeinsam. Ergebnis ist eine
+Liste, kein Code. Zwei Punkte sind dabei inhaltlich offen und brauchen eine
+Entscheidung, keine Analyse:
 
-- MCP-URLs auf `https://${TASKTOOL_HOST}/mcp/...` umstellen. Plugin-Manifeste
-  unterstützen Umgebungsvariablen in `url` und `headers`.
-- Hostnamen in den Skills durch Platzhalter ersetzen, mit dem Medialine-Wert als
-  Beispiel.
-- `port-allocation` auf die Registry umstellen statt auf die statische Tabelle.
-- Medialine-Beispiele als solche kennzeichnen oder ersetzen.
+- **VIBES aufteilen.** Ein Teil ist Produkt, ein Teil Hausstil. Die Grenze zu ziehen
+  ist eine Festlegung.
+- **`cloud-only` und `jenkins-pipeline`.** Beide beschreiben ein Deployment-Modell,
+  das mit `s20` noch offen ist. Vorher nicht generisch umschreiben — sonst zweimal.
 
-**Warum zuerst:** Das ist die eigentliche Arbeit, sie ist rückwärtskompatibel, und
-sie nützt sofort. Risiko gering, jede Änderung einzeln prüfbar.
-
-### Phase 2 — Schnitt in zwei Plugins
-
-Erst danach, weil ab hier Korrekturen teurer werden.
+## 6. Der Schnitt selbst, sobald `s39` und `s40` stehen
 
 | Plugin | Inhalt | Zielgruppe |
 |---|---|---|
-| **Kunden-Plugin** | Auth, Pulse, Assistant, Object Storage, Vector-Search, Ports, App-Baseline, Doku-Regel, Stack, Produkt-Teil von VIBES, PM-Skills, Feedback-Loop | Entwickler beim Kunden |
-| **Produkt-Plugin** | MCP-Server entwickeln, Diag, Registry-Interna, CI/CD-Pipeline, Architektur der Dienste, Feedback-Loop | Wer TaskTool selbst baut |
+| **Produktteil** | Auth, Pulse, Assistant, Object Storage, Vector-Search, Ports, App-Baseline, Doku-Regel, Stack, Produkt-Teil von VIBES, PM-Skills, Feedback-Loop | Entwickler beim Kunden |
+| **Overlay** | Medialine-Hostnamen, belegte Ports, Entra-Anbindung, Hausregeln, Beispiele aus Winline und Boomi | Nur Medialine |
 
-**Medialine-spezifisch** wird voraussichtlich kein drittes Plugin, sondern
-Konfiguration plus wenige Hausregeln. Ob das eine `CLAUDE.md`-Ebene pro Repository
-wird oder ein dünnes Overlay-Plugin, wird entschieden, wenn nach Phase 1 sichtbar
-ist, wie viel übrig bleibt. Erwartung: sehr wenig.
+Der Overlay-Teil ist nach V1 voraussichtlich sehr klein. Ob daraus ein eigenes Plugin
+wird oder eine `CLAUDE.md`-Ebene je Repo, entscheidet sich erst, wenn sichtbar ist,
+wie viel übrig bleibt.
 
-**Gemeinsame Hygiene-Regeln** (`conventional-commits`, `security`,
-`branch-workflow`, `documentation`) gehen in beide Plugins. Das ist bewusste
-Doppelpflege: Die Vorgabe lautet „völlig unabhängig", und ein drittes Basis-Plugin
-würde die Abhängigkeit wieder aufmachen. Das Driftrisiko ist bekannt und
-akzeptiert.
+**Kernaussage aus der ersten Analyse, die weiter gilt:** Das ist keine
+Inhaltstrennung, sondern eine Parametrisierung. Nachdem Stack, Port-Register und ein
+Teil von VIBES dem Produkt zugeordnet sind, bleibt an Medialine-Spezifischem fast
+kein Inhalt übrig — nur Konfigurationswerte.
 
-### Phase 3 — Umbenennung der MCP-Server
+## 7. Reihenfolge
 
-Heute heißen sie `medialine-diag`, `medialine-gitea` und so weiter. Im Produkt
-müssen sie neutral heißen.
+1. **V2** — an `s37` gekoppelt, sonst brechen Verweise beim Transfer.
+2. **V1** — jederzeit, unabhängig von allem anderen.
+3. **V3** — jederzeit; das Ergebnis ist die Vorlage für den Schnitt.
+4. **`s40` entscheiden** — die einzige Entscheidung ohne `s20`-Abhängigkeit, und sie
+   entschärft `s37` mit.
+5. **`s20` → `s39`** — außerhalb dieses Plans.
+6. **Schnitt (`s41`)** — Dateien verschieben.
+7. **Umbenennung** — gebündelt mit dem GitLab-Cutover, einmalig, angekündigt.
 
-Das ist der einzige echte Bruch im ganzen Vorhaben: Die Werkzeugnamen ändern sich,
-und jede Berechtigungsliste in `.claude/settings.json` zeigt ins Leere. Betroffen
-sind alle Repositories mit Plugin-Anbindung sowie jede Entwicklerkonfiguration.
+## 8. Offene Entscheidungen
 
-Bewusst ans Ende gestellt. Einmal durchführen, vorher ankündigen, an einem Termin.
-
-### Phase 4 — Auslieferung
-
-Noch offen. Die Entscheidung hängt an Phase 0: Wird TaskTool als kompletter Stack
-ausgeliefert, liegt nahe, dass die Instanz ihren Marketplace selbst bereitstellt
-(`https://tasktool.<kunde>/plugins/marketplace.json`). Vorteile: Die
-Plugin-Version passt immer zur installierten Version, der Kunde braucht keinen
-Zugang zu fremden Git-Servern, und die Host-Beschränkung von Claude Desktop
-(nur github, gitlab, bitbucket) entfällt, weil `source: url` zulässig ist.
-
----
-
-## 5. Offene Entscheidungen
-
-| Thema | Status | Blockiert |
+| Thema | Backlog | Blockiert |
 |---|---|---|
-| **Produktname** | offen | alles — Plugin-Namen, MCP-Namen, Verzeichnisse |
-| Deployment-Modell (Docker / Kubernetes) | offen | `cloud-only`, `jenkins-pipeline` |
-| VIBES: Produkt gegen Hausstil | offen | Zuschnitt Phase 2 |
-| Auslieferungsweg | offen | Phase 4 |
-| Form des Medialine-Rests | offen | entscheidet sich nach Phase 1 |
+| K8s-Grundsatz | `s20` | `s39`, damit mittelbar `s41` |
+| Auslieferungsmodell | `s39` | `s41` |
+| Grenzregel Artefakte | `s40` | `s41`, `s01`, `s03`, `s37` |
+| Produktname | — | Plugin-Namen, MCP-Namen, Verzeichnisse |
+| VIBES: Produkt gegen Hausstil | — | Zuschnitt in Abschnitt 6 |
+| Reihenfolge GitLab-Cutover gegen Produktschnitt | — | Abschnitt 3 |
 
-Eigenes Vorhaben, hier nur vermerkt: Für TaskTool als Produkt ist eine **eigene
-Feedback-Umsetzung** zu planen. Pulse sammelt Feedback zu den Apps; Feedback zum
-Produkt selbst ist damit nicht abgedeckt.
+## 9. Was hier bewusst nicht drinsteht
 
----
-
-## 6. Nächster Schritt
-
-Sobald der Produktname feststeht: Phase 1 beginnen, angefangen bei den MCP-URLs.
-Das ist die kleinste abgeschlossene Einheit und läuft unabhängig von den übrigen
-offenen Punkten.
+- **Weitere Coding-Agent-Stacks** (`s02`, OpenCode/OpenChamber). Eine Vorprüfung
+  ergab: Skills und Rules sind weitgehend portabel, Hooks müssten neu gebaut werden,
+  einen Marketplace gibt es dort nicht. Das gehört hinter den Schnitt, wie `s02`
+  selbst vermerkt.
+- **Eigene Feedback-Umsetzung für TaskTool.** Pulse sammelt Feedback zu den Apps,
+  nicht zum Produkt. Eigenes Vorhaben.
