@@ -16,16 +16,20 @@ feedback, chat/AI, login, file upload, search, notifications, deployment.
 
 ## The services
 
-| Service | Repo | What it gives you | Skill |
-|---|---|---|---|
-| **Pulse** | `medialine/pulse` | In-app feedback widget (floating button, form, screenshot capture) + admin backend to triage what users report | [`pulse-feedback`](../pulse-feedback/SKILL.md) |
-| **Assistant** | `medialine/assistant-service` | Platform AI assistant — one brain, every app. Floating ✨ launcher + ⌘-K spotlight that answers questions, looks up your app's records, and proposes actions the user confirms | [`ai-assistant`](../ai-assistant/SKILL.md) |
-| **Auth** | `medialine/auth-service` | TaskTool SSO: Entra login + RS256 platform JWT issuance. Apps only verify with the mounted public key — no app-side login | [`auth-integration`](../auth-integration/SKILL.md) |
-| **MinIO** | `medialine/infrastructure` | Shared S3-compatible object storage, per-app users + bucket policies | [`object-storage`](../object-storage/SKILL.md) |
-| **Vector service** | `medialine/vector-service` | Shared Milvus collections for RAG / semantic search | [`vector-search`](../vector-search/SKILL.md) |
-| **ext-api-service** | `medialine/ext-api-service` | Gateway to external APIs (companyai/Claude, Lusha, Handelsregister, …). Never call a vendor API directly from an app | — |
-| **cicd-service** | `medialine/cicd-service` | Jenkins job + Gitea webhook provisioning | [`jenkins-pipeline`](../jenkins-pipeline/SKILL.md) |
-| **Diag API** | `medialine/tasktool` | Read-only prod introspection: container logs, stats, proxied requests, SELECTs | `diag-api` |
+| Service | What it gives you | Skill |
+|---|---|---|
+| **Pulse** | In-app feedback widget (floating button, form, screenshot capture) + admin backend to triage what users report | [`pulse-feedback`](../pulse-feedback/SKILL.md) |
+| **Assistant** | Platform AI assistant — one brain, every app. Floating ✨ launcher + ⌘-K spotlight that answers questions, looks up your app's records, and proposes actions the user confirms | [`ai-assistant`](../ai-assistant/SKILL.md) |
+| **Auth** | TaskTool SSO: Entra login + RS256 platform JWT issuance. Apps only verify with the mounted public key — no app-side login | [`auth-integration`](../auth-integration/SKILL.md) |
+| **MinIO** | Shared S3-compatible object storage, per-app users + bucket policies | [`object-storage`](../object-storage/SKILL.md) |
+| **Vector service** | Shared Milvus collections for RAG / semantic search | [`vector-search`](../vector-search/SKILL.md) |
+| **ext-api-service** | Gateway to external APIs. Never call a vendor API directly from an app — ask the gateway which APIs this installation offers (`list_apis`, `get_api`) | — |
+| **cicd-service** | Jenkins job + webhook provisioning | [`jenkins-pipeline`](../jenkins-pipeline/SKILL.md) |
+| **Diag API** | Read-only prod introspection: container logs, stats, proxied requests, SELECTs | `diag-api` |
+
+> The repository behind each service is deliberately not listed. You do not need
+> it to consume a service, and the platform repositories are not readable from an
+> app developer's account. Everything you need is in the linked skill.
 
 ## The two widget services
 
